@@ -1,0 +1,27 @@
+[gate]
+    exchange_name = 'binance'
+    instance_name = '1'
+
+[configuration]
+    # Откуда загружать конфигурацию. Может быть три значения: agent, api, file.
+    # - agent - запрашивать конфигурацию у Agent (секция configuration.agent далее)
+    # - api - запрашивать конфигурацию из api (адрес в поле api далее)
+    # - file - загружать конфигурацию из файла (адрес файла в поле path_to_file далее)
+    source = 'file'
+
+    # Эндпоинт для получения конфигурации от конфигуратора. Обязательно, если выставлен source = 'api'
+    api = {host = 'configurator.robotrade.io', params = {only_new = false}}
+
+    # Путь до файла файла, из которого загружается конфигурация. Обязательно, если выставлен source = 'file'
+    path_to_file = 'default_config.json'
+
+    # Данные для запроса конфигурации и получения ответа от Agent. Обязательно, если выставлен source = 'agent'
+    [configuration.agent]
+        [configuration.agent.subscriber]
+            channel = "aeron:ipc"
+            stream_id = 1003
+            fragments_limit = 10
+
+        [configuration.agent.publisher]
+            channel = "aeron:ipc"
+            stream_id = 1002
