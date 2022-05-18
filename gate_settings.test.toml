@@ -1,5 +1,5 @@
 [gate]
-    exchange_name = 'binance'
+    exchange_name = 'aax'
     instance_name = '1'
 
 [configuration]
