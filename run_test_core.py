@@ -2,7 +2,6 @@
 # -*- coding: UTF-8 -*-
 
 import asyncio
-import logging
 
 import click
 
@@ -14,9 +13,6 @@ gate_settings_path = '../settings.toml'
 default_test_exchange = 'binance'
 
 
-# logging.basicConfig(level=logging.INFO)
-
-
 @click.group()
 def cli():
     ...
@@ -24,7 +20,7 @@ def cli():
 
 @click.command()
 @click.argument('exchange_name')
-def run_fast_test(exchange_name):
+def fast_test(exchange_name):
     """Тип тестирования, при котором ядро прогоняет все команды и тестирует выставлени и отмену ордеров,
     получение баланса и ордербуков. То есть тестируется весь функционал, но макисмально быстро.
     Данный тест будет использоваться при незначительных изменениях гейта для проверки его работоспособности.
@@ -39,7 +35,7 @@ def run_fast_test(exchange_name):
 
 @click.command()
 @click.argument('exchange_name')
-def run_long_test(exchange_name):
+def long_test(exchange_name):
     """При этом тестировании ядро запускается на продолжительное время (несколько дней) и реализует
     простую безубыточную торговую стратегию. Основная цель такого тестирования - проверить,
     как гейт конкретной биржи ведет себя при продолжительном запуске.
@@ -56,7 +52,7 @@ def run_long_test(exchange_name):
 
 @click.command()
 @click.argument('exchange_name')
-def run_listener(exchange_name):
+def listener(exchange_name):
     """ Запуск тестового ядра, при котором оно будет слушать сообщения от гейта и логгировать их.
     Команды отправляться не будут.
 
@@ -74,11 +70,10 @@ def hello():
 
 
 cli.add_command(hello)
-cli.add_command(run_listener)
-cli.add_command(run_fast_test)
-cli.add_command(run_long_test)
+cli.add_command(listener)
+cli.add_command(fast_test)
+cli.add_command(long_test)
 
 #
 if __name__ == '__main__':
     cli()
-#     # run_listener(default_test_exchange)
