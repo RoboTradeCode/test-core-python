@@ -1,7 +1,4 @@
-import datetime
 import json
-from pprint import pprint
-from time import sleep
 import time
 import logging.config
 from aeron import Subscriber, Publisher
@@ -23,13 +20,6 @@ def current_milli_time():
     return round(time.time() * 1_000_000)
 
 
-def print_time_handler(message: str) -> None:
-    try:
-        print(datetime.datetime.now())
-    except Exception as e:
-        print(e)
-
-
 def empty_handler(message: str) -> None:
     ...
 
@@ -43,7 +33,7 @@ class TestCore:
         self.running = True
 
         self.algo: str = 'py_test'
-        self.exchange: str = ''
+        self.exchange_name: str = ''
         self.command_publisher: Publisher
 
     # обработчик сообщений от гейта (всех сообщений)
@@ -85,7 +75,7 @@ class TestCore:
     def cancel_all_orders(self):
         self.send_command(CancelAllOrdersCommand(
             event="command",
-            exchange=self.exchange,
+            exchange=self.exchange_name,
             node="core",
             instance="py_test_core",
             action="cancel_all_orders",
@@ -98,7 +88,7 @@ class TestCore:
     def cancel_order(self, order_id: str, symbol: str):
         self.send_command(CancelOrderCommand(
             event="command",
-            exchange=self.exchange,
+            exchange=self.exchange_name,
             node="core",
             instance="py_test_core",
             action="cancel_order",
@@ -114,7 +104,7 @@ class TestCore:
     def order_status(self, order_id: str, symbol: str):
         self.send_command(OrderStatusCommand(
             event="command",
-            exchange=self.exchange,
+            exchange=self.exchange_name,
             node="core",
             instance="py_test_core",
             action="order_status",
@@ -130,7 +120,7 @@ class TestCore:
     def create_order(self, symbol: str, order_type: str, side: str, price: float, amount: float):
         self.send_command(CreateOrderCommand(
             event="command",
-            exchange=self.exchange,
+            exchange=self.exchange_name,
             node="core",
             instance="py_test_core",
             action="create_order",
@@ -149,7 +139,7 @@ class TestCore:
     def get_balances(self, assets: list[str] = None):
         self.send_command(GetBalanceCommand(
             event="command",
-            exchange=self.exchange,
+            exchange=self.exchange_name,
             node="core",
             instance="py_test_core",
             action="get_balances",
@@ -180,25 +170,11 @@ class TestCore:
                   f'=================================')
             await asyncio.sleep(sleep_delay)
 
-    async def trade_strategy_loop(self):
-        # command_publisher = Publisher('aeron:ipc', stream_id=1004)
-        # while self.running:
-        #     self.cancel_all_orders()
-        #     self.get_balances(['BTC', 'USDT'])
-        #
-        #     while self.orderbooks is {} or self.balances is {}:
-        #         await asyncio.sleep(1)
-        ...
-
-    async def _fast_test_strategy(self):
-        logger.info('Start Fast testing.')
-        self.command_publisher = Publisher('aeron:ipc', stream_id=1004)
-        logger.info('Created command publisher.')
-
+    async def _base_strategy_iteration(self):
         logger.info('Sending command: cancel_all_orders.')
         self.cancel_all_orders()
         logger.info('Sending command: get_balances(["BTC", "USDT"]).')
-        self.get_balances(['BTC', 'USDT'])
+        self.get_balances(['BTC', 'USDT', 'ETH'])
 
         while self.last_orderbook == {} or self.balances == {}:
             logger.info('Wait for orderbooks and balances...')
@@ -227,6 +203,22 @@ class TestCore:
             }
         logger.info(f'Send command to create_order: {order}')
         self.create_order(**order)
+
+    async def _long_test_strategy(self):
+        logger.info('Start Long testing.')
+        self.command_publisher = Publisher('aeron:ipc', stream_id=1004)
+        logger.info('Created command publisher.')
+
+        while self.running:
+            await self._base_strategy_iteration()
+            await asyncio.sleep(180)
+
+    async def _fast_test_strategy(self):
+        logger.info('Start Fast testing.')
+        self.command_publisher = Publisher('aeron:ipc', stream_id=1004)
+        logger.info('Created command publisher.')
+
+        await self._base_strategy_iteration()
         await asyncio.sleep(5)
 
         logger.info('Wait for order info...')
@@ -252,4 +244,6 @@ class TestCore:
         await asyncio.gather(self.listen_gate_loop(), self._fast_test_strategy())
 
     async def long_test(self):
-        ...
+        await asyncio.sleep(1)
+        await asyncio.gather(self.listen_gate_loop(), self._long_test_strategy())
+
