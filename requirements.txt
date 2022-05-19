@@ -1,2 +1,3 @@
 aeron @ git+https://github.com/RoboTradeCode/aeron-python.git
 tomli~=2.0.1
+click~=8.1.3
