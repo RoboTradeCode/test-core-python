@@ -25,7 +25,7 @@ logging_config = {
             'class': "logging.handlers.RotatingFileHandler",
             'level': "WARNING",
             # файл, в который будут сохраняться логи
-            'filename': ".configurator-errors.log",
+            'filename': ".test-core-errors.log",
             'formatter': "default",
             'backupCount': 2,
         },
