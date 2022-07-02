@@ -5,7 +5,7 @@ import asyncio
 
 import click
 
-from src.test_core import TestCore
+from testing_core.core import TestCore
 
 gate_start_path = '../start.py'
 gate_settings_path = '../settings.toml'

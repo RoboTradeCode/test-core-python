@@ -36,4 +36,3 @@ logging_config = {
         'handlers': ["logfile", "stdout"],
     },
 }
-

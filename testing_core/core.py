@@ -1,14 +1,13 @@
 import json
 import time
 import logging.config
+import uuid
+
 from aeron import Subscriber, Publisher
 import asyncio
 
-from src.schemes.base_scheme import BaseScheme
-from src.logging.logger import logging_config
-from src.schemes.core_schemes import CancelAllOrdersCommand, CreateOrderCommand, GetBalanceCommand, CancelOrderCommand, \
-    OrderStatusCommand
-from src.schemes.gate_schemes import OrderBook, Balance, Order
+from testing_core.message_format import *
+from testing_core.logging.logger import logging_config
 
 # Загрузка настроек логгера и инициализация логгера
 logging.config.dictConfig(logging_config)
@@ -42,22 +41,21 @@ class TestCore:
             message_data = json.loads(message)
             if message_data.get('event') == 'data':
                 match message_data['action']:
-                    case 'orderbook':
-                        _orderbook = OrderBook(**message_data)
+                    case 'order_book_update':
                         if message_data['data']['symbol'] == 'BTC/USDT':
                             self.last_orderbook = message_data['data']
-                    case 'balances':
-                        _balance = Balance(**message_data)
-                        self.balances = message_data['data']
+
+                            # self.last_orderbooks[message_data['data']['symbol']] = message_data['data']
+                    case 'get_balance' | 'balances_update':
+                        self.balances = message_data['data']['data']
                         logger.info(f'Received balances: {message_data}')
-                    case 'order_created':
-                        _order = Order(**message_data)
+                    case 'orders_update' | 'get_orders':
                         logger.info(f'Received order data: {message_data}')
-                        self.orders.append(_order.data)
+                        self.orders.append(message_data['data']['client_order_id'])
                     case _:
                         logger.warning(f'Unexpected data: {message_data}')
-            # elif message_data.get('event') == 'info':
-            #     pprint(message_data)
+            elif message_data.get('event') == 'info':
+                logger.info(message_data)
             # print(f'=================================\n'
             #       f'orderbooks: {len(self.orderbooks)}\n'
             #       f'balances: {len(self.balances)}\n'
@@ -66,15 +64,15 @@ class TestCore:
         except Exception as e:
             print(e)
 
-    def send_command(self, command: BaseScheme):
+    def send_command(self, command: Message):
         if not self.command_publisher:
             raise Exception
-        message = json.dumps(command, default=lambda o: o.__dict__)
-        self.command_publisher.offer(message)
+        self.command_publisher.offer(command.json())
 
     def cancel_all_orders(self):
-        self.send_command(CancelAllOrdersCommand(
+        self.send_command(Message(
             event="command",
+            event_id=uuid.uuid4().__str__(),
             exchange=self.exchange_name,
             node="core",
             instance="py_test_core",
@@ -86,48 +84,53 @@ class TestCore:
         ))
 
     def cancel_order(self, order_id: str, symbol: str):
-        self.send_command(CancelOrderCommand(
+        self.send_command(Message(
             event="command",
+            event_id=uuid.uuid4().__str__(),
             exchange=self.exchange_name,
             node="core",
             instance="py_test_core",
-            action="cancel_order",
+            action="cancel_orders",
             message=None,
             algo=self.algo,
             timestamp=current_milli_time(),
-            data=[CancelOrderCommand.Order(
-                id=order_id,
+            data=[OrderId(
+                client_order_id=order_id,
                 symbol=symbol
             )]
         ))
 
     def order_status(self, order_id: str, symbol: str):
-        self.send_command(OrderStatusCommand(
+        self.send_command(Message(
             event="command",
+            event_id=uuid.uuid4().__str__(),
             exchange=self.exchange_name,
             node="core",
             instance="py_test_core",
-            action="order_status",
+            action="get_orders",
             message=None,
             algo=self.algo,
             timestamp=current_milli_time(),
-            data=OrderStatusCommand.Order(
+            data=[OrderId(
                 id=order_id,
                 symbol=symbol
-            )
+            )]
         ))
 
     def create_order(self, symbol: str, order_type: str, side: str, price: float, amount: float):
-        self.send_command(CreateOrderCommand(
+        client_order_id = uuid.uuid4().__str__()
+        self.send_command(Message(
             event="command",
+            event_id=client_order_id,
             exchange=self.exchange_name,
             node="core",
             instance="py_test_core",
-            action="create_order",
+            action="create_orders",
             message=None,
             algo=self.algo,
             timestamp=current_milli_time(),
-            data=[CreateOrderCommand.Order(
+            data=[OrderToCreate(
+                client_order_id=client_order_id,
                 symbol=symbol,
                 type=order_type,
                 side=side,
@@ -137,36 +140,36 @@ class TestCore:
         ))
 
     def get_balances(self, assets: list[str] = None):
-        self.send_command(GetBalanceCommand(
+        self.send_command(Message(
             event="command",
+            event_id=uuid.uuid4().__str__(),
             exchange=self.exchange_name,
             node="core",
             instance="py_test_core",
-            action="get_balances",
+            action="get_balance",
             message=None,
             algo=self.algo,
             timestamp=current_milli_time(),
-            data=GetBalanceCommand.Asset(
-                assets=assets
-            ) if assets is not None else None
+            data=assets
         ))
 
     async def listen_gate_loop(self):
         subscribers = {i: Subscriber(self.handler, 'aeron:ipc', i) for i in range(1001, 1010)}
-        subscribers[1001] = Subscriber(empty_handler, 'aeron:ipc', 1001)
-        # subscribers[1006] = Subscriber(empty_handler, 'aeron:ipc', 1006)
+        # subscribers[1001] = Subscriber(empty_handler, 'aeron:ipc', 1001)
+        subscribers[1008] = Subscriber(empty_handler, 'aeron:ipc', 1008)
 
         while self.running:
             for subscriber in subscribers.values():
                 subscriber.poll()
             await asyncio.sleep(0.0001)
 
-    async def logging_loop(self, sleep_delay: float):
+    async def logging_loop(self, sleep_delay: float = 1):
         while self.running:
             print(f'=================================\n'
-                  f'orderbooks: {len(self.last_orderbook)}\n'
+                  f'order books: {len(self.last_orderbook)}\n'
                   f'balances: {len(self.balances)}\n'
                   f'orders: {len(self.orders)}\n'
+                  f'order books symbols: {", ".join(self.last_orderbook.keys())}\n'
                   f'=================================')
             await asyncio.sleep(sleep_delay)
 
@@ -185,24 +188,30 @@ class TestCore:
         logger.info(f'Last orderbook: {self.last_orderbook}')
 
         order: dict = {}
-        if self.balances['USDT']['free'] > 50:
+        if 11 < self.balances['USDT']['free'] > self.balances['BTC']['free'] * self.last_orderbook['asks'][0][0]:
             order = {
                 'symbol': 'BTC/USDT',
                 'order_type': 'limit',
                 'side': 'buy',
-                'price': self.last_orderbook['bids'][len(self.last_orderbook['bids']) - 1][0] * 0.9,
-                'amount': round(50 / self.last_orderbook['bids'][len(self.last_orderbook['bids']) - 1][0], 5)
+                'price': round(self.last_orderbook['bids'][len(self.last_orderbook['bids']) - 1][0] * 0.9, 5),
+                'amount': round(12 / self.last_orderbook['bids'][len(self.last_orderbook['bids']) - 1][0], 5)
             }
-        elif self.balances['BTC']['free'] * self.last_orderbook['asks'][0][0] > 50:
+        elif self.balances['BTC']['free'] * self.last_orderbook['asks'][0][0] > 11:
             order = {
                 'symbol': 'BTC/USDT',
                 'order_type': 'limit',
                 'side': 'sell',
-                'price': self.last_orderbook['asks'][len(self.last_orderbook['asks']) - 1][0] * 1.1,
-                'amount': round(50 / self.last_orderbook['asks'][len(self.last_orderbook['asks']) - 1][0], 5)
+                'price': round(self.last_orderbook['asks'][len(self.last_orderbook['asks']) - 1][0] * 1.1, 5),
+                'amount': round(12 / self.last_orderbook['asks'][len(self.last_orderbook['asks']) - 1][0], 5)
             }
-        logger.info(f'Send command to create_order: {order}')
-        self.create_order(**order)
+
+        if order:
+            logger.info(f'Send command to create_order: {order}')
+            self.create_order(**order)
+        else:
+            logger.error('Insufficient funds on BTC and USDT.')
+
+        self.cancel_all_orders()
 
     async def _long_test_strategy(self):
         logger.info('Start Long testing.')
@@ -246,4 +255,3 @@ class TestCore:
     async def long_test(self):
         await asyncio.sleep(1)
         await asyncio.gather(self.listen_gate_loop(), self._long_test_strategy())
-
