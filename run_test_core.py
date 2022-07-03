@@ -61,7 +61,10 @@ def listener(exchange_name):
     """
     core = TestCore()
     core.exchange_name = exchange_name
-    return asyncio.run(core.listen_gate_loop())
+    loop = asyncio.get_event_loop()
+    loop.create_task(core.listen_gate_loop())
+    loop.create_task(core.logging_loop(1))
+    loop.run_forever()
 
 
 @click.command()

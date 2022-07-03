@@ -39,23 +39,20 @@ class TestCore:
     def handler(self, message: str) -> None:
         try:
             message_data = json.loads(message)
-            if message_data.get('event') == 'data':
-                match message_data['action']:
-                    case 'order_book_update':
-                        if message_data['data']['symbol'] == 'BTC/USDT':
-                            self.last_orderbook = message_data['data']
+            match message_data['action']:
+                case 'order_book_update':
+                    if message_data['data']['symbol'] == 'BTC/USDT':
+                        self.last_orderbook = message_data['data']
 
-                            # self.last_orderbooks[message_data['data']['symbol']] = message_data['data']
-                    case 'get_balance' | 'balances_update':
-                        self.balances = message_data['data']['data']
-                        logger.info(f'Received balances: {message_data}')
-                    case 'orders_update' | 'get_orders':
-                        logger.info(f'Received order data: {message_data}')
-                        self.orders.append(message_data['data']['client_order_id'])
-                    case _:
-                        logger.warning(f'Unexpected data: {message_data}')
-            elif message_data.get('event') == 'info':
-                logger.info(message_data)
+                        # self.last_orderbooks[message_data['data']['symbol']] = message_data['data']
+                case 'get_balance' | 'balances_update':
+                    self.balances = message_data['data']['assets']
+                    logger.info(f'Received balances: {message_data}')
+                case 'orders_update' | 'get_orders':
+                    logger.info(f'Received order data: {message_data}')
+                    self.orders.append(message_data['data']['client_order_id'])
+                case _:
+                    logger.warning(f'Unexpected data: {message_data}')
             # print(f'=================================\n'
             #       f'orderbooks: {len(self.orderbooks)}\n'
             #       f'balances: {len(self.balances)}\n'
@@ -139,7 +136,7 @@ class TestCore:
             )]
         ))
 
-    def get_balances(self, assets: list[str] = None):
+    def get_balances(self, assets: list[str] = []):
         self.send_command(Message(
             event="command",
             event_id=uuid.uuid4().__str__(),
@@ -155,7 +152,7 @@ class TestCore:
 
     async def listen_gate_loop(self):
         subscribers = {i: Subscriber(self.handler, 'aeron:ipc', i) for i in range(1001, 1010)}
-        # subscribers[1001] = Subscriber(empty_handler, 'aeron:ipc', 1001)
+        subscribers[1004] = Subscriber(empty_handler, 'aeron:ipc', 1004)
         subscribers[1008] = Subscriber(empty_handler, 'aeron:ipc', 1008)
 
         while self.running:
@@ -177,7 +174,8 @@ class TestCore:
         logger.info('Sending command: cancel_all_orders.')
         self.cancel_all_orders()
         logger.info('Sending command: get_balances(["BTC", "USDT"]).')
-        self.get_balances(['BTC', 'USDT', 'ETH'])
+        # self.get_balances(['BTC', 'USDT', 'ETH'])
+        self.get_balances()
 
         while self.last_orderbook == {} or self.balances == {}:
             logger.info('Wait for orderbooks and balances...')
@@ -188,21 +186,21 @@ class TestCore:
         logger.info(f'Last orderbook: {self.last_orderbook}')
 
         order: dict = {}
-        if 11 < self.balances['USDT']['free'] > self.balances['BTC']['free'] * self.last_orderbook['asks'][0][0]:
+        if 11 < self.balances['USDT']['free'] > self.balances['ETH']['free'] * self.last_orderbook['asks'][0][0]:
             order = {
-                'symbol': 'BTC/USDT',
+                'symbol': 'ETH/USDT',
                 'order_type': 'limit',
                 'side': 'buy',
-                'price': round(self.last_orderbook['bids'][len(self.last_orderbook['bids']) - 1][0] * 0.9, 5),
-                'amount': round(12 / self.last_orderbook['bids'][len(self.last_orderbook['bids']) - 1][0], 5)
+                'price': round(self.last_orderbook['bids'][len(self.last_orderbook['bids']) - 1][0] * 0.95, 5),
+                'amount': round(11 / self.last_orderbook['bids'][len(self.last_orderbook['bids']) - 1][0], 5)
             }
-        elif self.balances['BTC']['free'] * self.last_orderbook['asks'][0][0] > 11:
+        elif self.balances['ETH']['free'] * self.last_orderbook['asks'][0][0] > 11:
             order = {
-                'symbol': 'BTC/USDT',
+                'symbol': 'ETH/USDT',
                 'order_type': 'limit',
                 'side': 'sell',
-                'price': round(self.last_orderbook['asks'][len(self.last_orderbook['asks']) - 1][0] * 1.1, 5),
-                'amount': round(12 / self.last_orderbook['asks'][len(self.last_orderbook['asks']) - 1][0], 5)
+                'price': round(self.last_orderbook['asks'][len(self.last_orderbook['asks']) - 1][0] * 1.05, 5),
+                'amount': round(11 / self.last_orderbook['asks'][len(self.last_orderbook['asks']) - 1][0], 5)
             }
 
         if order:
