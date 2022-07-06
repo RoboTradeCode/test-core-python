@@ -41,7 +41,7 @@ class TestCore:
             message_data = json.loads(message)
             match message_data['action']:
                 case 'order_book_update':
-                    if message_data['data']['symbol'] == 'BTC/USDT':
+                    if message_data['data']['symbol'] == 'ETH/USDT':
                         self.last_orderbook = message_data['data']
 
                         # self.last_orderbooks[message_data['data']['symbol']] = message_data['data']
@@ -65,6 +65,7 @@ class TestCore:
         if not self.command_publisher:
             raise Exception
         self.command_publisher.offer(command.json())
+        logger.info(f'Send command {command.action.value}: {command.json()}')
 
     def cancel_all_orders(self):
         self.send_command(Message(
@@ -204,7 +205,6 @@ class TestCore:
             }
 
         if order:
-            logger.info(f'Send command to create_order: {order}')
             self.create_order(**order)
         else:
             logger.error('Insufficient funds on BTC and USDT.')
