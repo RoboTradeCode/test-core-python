@@ -1,7 +1,7 @@
 from typing import Union
 
 from pydantic import BaseModel, PositiveFloat, NonNegativeFloat, Field
-from dragon_gate import enums
+from testing_core import enums
 
 
 class Balance(BaseModel):
