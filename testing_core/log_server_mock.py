@@ -6,8 +6,7 @@ from time import sleep
 
 def handler(message: str) -> None:
     message_json = json.loads(message)
-    if message_json.get('action') != 'ping':
-        print(f"<<{message}>>")
+    print(f"<<{message}>>")
 
 
 subscriber = Subscriber(

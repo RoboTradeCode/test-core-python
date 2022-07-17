@@ -24,7 +24,7 @@ class OrderId(BaseModel):
     client_order_id: str
     symbol: str
     # order_id field will only be set at Gate
-    order_id: str = None
+    id: str = None
 
 
 class OrderToCreate(BaseModel):

@@ -45,10 +45,10 @@ class TestCore:
                         self.last_orderbook = message_data['data']
 
                         # self.last_orderbooks[message_data['data']['symbol']] = message_data['data']
-                case 'get_balance' | 'balances_update':
+                case 'get_balance' | 'balance_update':
                     self.balances = message_data['data']['assets']
                     logger.info(f'Received balances: {message_data}')
-                case 'orders_update' | 'get_orders':
+                case 'orders_update' | 'get_orders' | 'create_orders':
                     logger.info(f'Received order data: {message_data}')
                     self.orders.append(message_data['data']['client_order_id'])
                 case _:
@@ -190,18 +190,18 @@ class TestCore:
         if 11 < self.balances['USDT']['free'] > self.balances['ETH']['free'] * self.last_orderbook['asks'][0][0]:
             order = {
                 'symbol': 'ETH/USDT',
-                'order_type': 'limit',
+                'order_type': 'market',
                 'side': 'buy',
-                'price': round(self.last_orderbook['bids'][len(self.last_orderbook['bids']) - 1][0] * 0.95, 5),
-                'amount': round(11 / self.last_orderbook['bids'][len(self.last_orderbook['bids']) - 1][0], 5)
+                'price': round(self.last_orderbook['bids'][len(self.last_orderbook['bids']) - 1][0] * 0.99, 1),
+                'amount': round(5 / self.last_orderbook['bids'][len(self.last_orderbook['bids']) - 1][0], 4)
             }
         elif self.balances['ETH']['free'] * self.last_orderbook['asks'][0][0] > 11:
             order = {
                 'symbol': 'ETH/USDT',
-                'order_type': 'limit',
+                'order_type': 'market',
                 'side': 'sell',
-                'price': round(self.last_orderbook['asks'][len(self.last_orderbook['asks']) - 1][0] * 1.05, 5),
-                'amount': round(11 / self.last_orderbook['asks'][len(self.last_orderbook['asks']) - 1][0], 5)
+                'price': round(self.last_orderbook['asks'][len(self.last_orderbook['asks']) - 1][0] * 1.01, 1),
+                'amount': round(5 / self.last_orderbook['asks'][len(self.last_orderbook['asks']) - 1][0], 4)
             }
 
         if order:
