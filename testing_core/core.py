@@ -28,7 +28,7 @@ class TestCore:
     def __init__(self):
         self.last_orderbook: dict = {}
         self.balances: dict = {}
-        self.orders: list[dict] = []
+        self.orders: dict = {}
         self.running = True
 
         self.algo: str = 'py_test'
@@ -50,7 +50,7 @@ class TestCore:
                     logger.info(f'Received balances: {message_data}')
                 case 'orders_update' | 'get_orders' | 'create_orders':
                     logger.info(f'Received order data: {message_data}')
-                    self.orders.append(message_data['data']['client_order_id'])
+                    self.orders = message_data['data'][0]
                 case _:
                     logger.warning(f'Unexpected data: {message_data}')
             # print(f'=================================\n'
@@ -110,7 +110,7 @@ class TestCore:
             algo=self.algo,
             timestamp=current_milli_time(),
             data=[OrderId(
-                id=order_id,
+                client_order_id=order_id,
                 symbol=symbol
             )]
         ))
@@ -153,7 +153,8 @@ class TestCore:
 
     async def listen_gate_loop(self):
         subscribers = {i: Subscriber(self.handler, 'aeron:ipc', i) for i in range(1001, 1010)}
-        subscribers[1004] = Subscriber(empty_handler, 'aeron:ipc', 1004)
+        # subscribers[1004] = Subscriber(empty_handler, 'aeron:ipc', 1004)
+        del subscribers[1004]
         subscribers[1008] = Subscriber(empty_handler, 'aeron:ipc', 1008)
 
         while self.running:
@@ -209,7 +210,7 @@ class TestCore:
         else:
             logger.error('Insufficient funds on BTC and USDT.')
 
-        self.cancel_all_orders()
+        # self.cancel_all_orders()
 
     async def _long_test_strategy(self):
         logger.info('Start Long testing.')
@@ -228,16 +229,18 @@ class TestCore:
         await self._base_strategy_iteration()
         await asyncio.sleep(5)
 
-        logger.info('Wait for order info...')
         while not self.orders:
+            logger.info('Wait for order info...')
             await asyncio.sleep(0.1)
 
-        logger.info(f'Send command order_status: id = {self.orders[0]["id"]}, symbol = {self.orders[0]["symbol"]}')
-        self.order_status(self.orders[0]['id'], self.orders[0]['symbol'])
+        logger.info(f'Send command order_status: client_order_id = {self.orders["client_order_id"]}, '
+                    f'symbol = {self.orders["symbol"]}')
+        self.order_status(self.orders['client_order_id'], self.orders['symbol'])
         await asyncio.sleep(5)
 
-        logger.info(f'Send command to cancel_order: id = {self.orders[0]["id"]}, symbol = {self.orders[0]["symbol"]}')
-        self.cancel_order(self.orders[0]['id'], self.orders[0]['symbol'])
+        logger.info(f'Send command to cancel_order: client_order_id = {self.orders["client_order_id"]}, '
+                    f'symbol = {self.orders["symbol"]}')
+        self.cancel_order(self.orders['client_order_id'], self.orders['symbol'])
 
         logger.info(f'Send command to get_balances for full balance')
         self.get_balances()
