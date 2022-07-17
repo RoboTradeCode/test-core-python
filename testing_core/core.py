@@ -116,10 +116,9 @@ class TestCore:
         ))
 
     def create_order(self, symbol: str, order_type: str, side: str, price: float, amount: float):
-        client_order_id = uuid.uuid4().__str__()
         self.send_command(Message(
             event="command",
-            event_id=client_order_id,
+            event_id=f'event_{uuid.uuid4().__str__()}',
             exchange=self.exchange_name,
             node="core",
             instance="py_test_core",
@@ -128,7 +127,7 @@ class TestCore:
             algo=self.algo,
             timestamp=current_milli_time(),
             data=[OrderToCreate(
-                client_order_id=client_order_id,
+                client_order_id=f'id_{uuid.uuid4().__str__()}',
                 symbol=symbol,
                 type=order_type,
                 side=side,
@@ -191,7 +190,7 @@ class TestCore:
         if 11 < self.balances['USDT']['free'] > self.balances['ETH']['free'] * self.last_orderbook['asks'][0][0]:
             order = {
                 'symbol': 'ETH/USDT',
-                'order_type': 'market',
+                'order_type': 'limit',
                 'side': 'buy',
                 'price': round(self.last_orderbook['bids'][len(self.last_orderbook['bids']) - 1][0] * 0.99, 1),
                 'amount': round(5 / self.last_orderbook['bids'][len(self.last_orderbook['bids']) - 1][0], 4)
@@ -199,7 +198,7 @@ class TestCore:
         elif self.balances['ETH']['free'] * self.last_orderbook['asks'][0][0] > 11:
             order = {
                 'symbol': 'ETH/USDT',
-                'order_type': 'market',
+                'order_type': 'limit',
                 'side': 'sell',
                 'price': round(self.last_orderbook['asks'][len(self.last_orderbook['asks']) - 1][0] * 1.01, 1),
                 'amount': round(5 / self.last_orderbook['asks'][len(self.last_orderbook['asks']) - 1][0], 4)
