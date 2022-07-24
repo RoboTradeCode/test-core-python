@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class OrderStatus(Enum):
+class GateOrderStatus(Enum):
     OPEN = 'open'
     CLOSED = 'closed'
     CANCELED = 'canceled'
@@ -34,7 +34,7 @@ class Node(Enum):
 
 
 class Action(Enum):
-    ORDER_BOOK_UPDATE = 'order_book_update'
+    ORDERBOOK_UPDATE = 'orderbook_update'
     CREATE_ORDERS = 'create_orders'
     CANCEL_ORDERS = 'cancel_orders'
     CANCEL_ALL_ORDERS = 'cancel_all_orders'
@@ -43,3 +43,13 @@ class Action(Enum):
     GET_BALANCE = 'get_balance'
     PING = 'ping'
     BALANCES_UPDATE = 'balances_update'
+
+
+class OrderState(Enum):
+    UNPLACED = 'unplaced'
+    PLACING = 'placing'
+    OPEN = 'open'
+    FILLED = 'filled'
+    CLOSED = 'closed'
+    CANCELED = 'canceled'
+    ERROR = 'error'

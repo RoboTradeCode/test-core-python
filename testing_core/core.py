@@ -6,10 +6,11 @@ import uuid
 from aeron import Subscriber, Publisher
 import asyncio
 
-from testing_core.message_format import *
-from testing_core.logging.logger import logging_config
+from testing_core.log.logger import logging_config
 
 # Загрузка настроек логгера и инициализация логгера
+from testing_core.models.message import GateOrderToCreate, Message
+
 logging.config.dictConfig(logging_config)
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ class TestCore:
         try:
             message_data = json.loads(message)
             match message_data['action']:
-                case 'order_book_update':
+                case 'orderbook_update':
                     if message_data['data']['symbol'] == 'ETH/USDT':
                         self.last_orderbook = message_data['data']
 
@@ -126,7 +127,7 @@ class TestCore:
             message=None,
             algo=self.algo,
             timestamp=current_milli_time(),
-            data=[OrderToCreate(
+            data=[GateOrderToCreate(
                 client_order_id=f'id_{uuid.uuid4().__str__()}',
                 symbol=symbol,
                 type=order_type,
@@ -187,22 +188,22 @@ class TestCore:
         logger.info(f'Last orderbook: {self.last_orderbook}')
 
         order: dict = {}
-        if 11 < self.balances['USDT']['free'] > self.balances['ETH']['free'] * self.last_orderbook['asks'][0][0]:
-            order = {
-                'symbol': 'ETH/USDT',
-                'order_type': 'limit',
-                'side': 'buy',
-                'price': round(self.last_orderbook['bids'][len(self.last_orderbook['bids']) - 1][0] * 0.99, 1),
-                'amount': round(5 / self.last_orderbook['bids'][len(self.last_orderbook['bids']) - 1][0], 4)
-            }
-        elif self.balances['ETH']['free'] * self.last_orderbook['asks'][0][0] > 11:
-            order = {
-                'symbol': 'ETH/USDT',
-                'order_type': 'limit',
-                'side': 'sell',
-                'price': round(self.last_orderbook['asks'][len(self.last_orderbook['asks']) - 1][0] * 1.01, 1),
-                'amount': round(5 / self.last_orderbook['asks'][len(self.last_orderbook['asks']) - 1][0], 4)
-            }
+        # if 11 < self.balances['USDT']['free'] > self.balances['ETH']['free'] * self.last_orderbook['asks'][0][0]:
+        #     order = {
+        #         'symbol': 'ETH/BTC',
+        #         'order_type': 'limit',
+        #         'side': 'buy',
+        #         'price': 0.067 #round(self.last_orderbook['bids'][len(self.last_orderbook['bids']) - 1][0] * 0.9, 2),
+        #         'amount': 0.00015 #round(10.11111 / self.last_orderbook['bids'][len(self.last_orderbook['bids']) - 1][0], 8)
+        #     }
+        # elif self.balances['ETH']['free'] * self.last_orderbook['asks'][0][0] > 11:
+        order = {
+            'symbol': 'ETH/BTC',
+            'order_type': 'market',
+            'side': 'sell',
+            'price': 0.07, # round(self.last_orderbook['asks'][len(self.last_orderbook['asks']) - 1][0] * 1.1, 2),
+            'amount': 0.0015 # round(10.11111 / self.last_orderbook['asks'][len(self.last_orderbook['asks']) - 1][0], 8)
+        }
 
         if order:
             self.create_order(**order)
