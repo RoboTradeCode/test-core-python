@@ -73,7 +73,7 @@ class Formatter(object):
         )
         return message
 
-    def format_create_orders(self, orders: list[OrderData]) -> Message:
+    def format_create_orders(self, orders: tuple[OrderData]) -> Message:
         """
         Форматировать команду для создания ордеров;
         :param orders: список ордеров;
@@ -93,7 +93,7 @@ class Formatter(object):
         return command
 
     @staticmethod
-    def format_order_ids(orders: list[OrderData]) -> list[GateOrderId]:
+    def format_order_ids(orders: tuple[OrderData]) -> list[GateOrderId]:
         """
         Форматировать список ордеров в список идентификаторов ордеров (symbol и client_order_id)
         :param orders: список ордеров;
@@ -107,7 +107,7 @@ class Formatter(object):
             ))
         return order_ids
 
-    def format_cancel_orders(self, orders: list[OrderData]):
+    def format_cancel_orders(self, orders: tuple[OrderData]):
         """
         Форматировать команду для отмены ордеров;
         :param orders: список ордеров;
@@ -128,7 +128,7 @@ class Formatter(object):
         )
         return command
 
-    def format_get_orders(self, orders: list[OrderData]):
+    def format_get_orders(self, orders: tuple[OrderData]):
         """
         Форматировать команду для запроса статусов ордеров;
         :param orders: список ордеров;
@@ -184,4 +184,5 @@ class Formatter(object):
                 filled=order.filled,
                 state=self.format_order_state(order)
             ))
+        return formatted_orders
 

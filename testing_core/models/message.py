@@ -73,5 +73,5 @@ class Message(BaseModel):
     timestamp: int
     data: Union[
         list[GateOrderToCreate], list[GateOrderInfo], list[GateOrderId], Orderbook,
-        Balances, list[str], int, str, None
+        GateOrderToCreate, Balances, list[str], int, str, None
     ]

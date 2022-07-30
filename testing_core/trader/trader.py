@@ -8,9 +8,9 @@ from testing_core.config import Configuration
 from testing_core.enums import OrderType, OrderSide
 from testing_core.formatter.formatter import Formatter
 from testing_core.models.balance import Balance
-from testing_core.models.message import Message, Balances
+from testing_core.models.message import Message, Balances, GateOrderInfo
 from testing_core.models.orderbook import Orderbook
-from testing_core.order.order import OrderData, Order
+from testing_core.order.order import OrderData, Order, OrderUpdatable
 from testing_core.order.order_fabric import OrderFabric
 from testing_core.store.state_balances import BalancesState
 from testing_core.store.state_orderbook import OrderbookState
@@ -18,6 +18,7 @@ from testing_core.store.state_orders import OrdersState
 from testing_core.utils import get_uuid
 
 logger = logging.getLogger(__name__)
+
 
 class Trader(object):
     """
@@ -57,6 +58,7 @@ class Trader(object):
         self._balances_state = BalancesState()
         self._orderbook_state = OrderbookState()
         self._order_fabric = OrderFabric(
+            markets=config.markets,
             place_function=self.place_orders,
             request_update_function=self.request_update_orders,
             cancel_function=self.cancel_orders,
@@ -74,8 +76,8 @@ class Trader(object):
     def create_order(
             self,
             symbol: str,
-            order_type: OrderType,
-            side: OrderSide,
+            order_type: OrderType | str,
+            side: OrderSide | str,
             price: float,
             amount: float,
             id_prefix: str = '',
@@ -111,8 +113,8 @@ class Trader(object):
     def create_unplaced_order(
             self,
             symbol: str,
-            order_type: OrderType,
-            side: OrderSide,
+            order_type: OrderType | str,
+            side: OrderSide | str,
             price: float,
             amount: float,
             id_prefix: str = '',
@@ -133,6 +135,13 @@ class Trader(object):
         # Создаю core order id
         core_order_id = get_uuid(prefix=id_prefix, postfix=id_postfix)
 
+        # Тип и сторону ордера можно передавать в функцию в виде строки
+        # Для внутреннего использования преобразую строку в enum
+        if isinstance(order_type, str):
+            order_type = enums.OrderType(order_type)
+        if isinstance(side, str):
+            side = enums.OrderSide(side)
+
         # создаю ордер
         order = self._order_fabric.create_order(
             core_order_id=core_order_id,
@@ -144,25 +153,32 @@ class Trader(object):
         )
 
         # добавляю ордер в хранилище ордеров
-        self._orders_state.add_order(order=order)
+        self._orders_state.add_order(order)
 
         return order
 
+    def add_orders(self, *orders: OrderUpdatable) -> None:
+        """
+        Добавить ордер в структуру, хранящую и обновляющую ордера.
+        :param orders: Order ордер
+        """
+        self._orders_state.add_order(*orders)
+
     @property
-    def balances(self) -> dict[str: Balance]:
+    def balances(self) -> BalancesState:
         """
         Получить текущие балансы по аккаунту.
         :return: текущие балансы
         """
-        return self._balances_state.balances
+        return self._balances_state
 
     @property
-    def orderbooks(self) -> dict[str, Orderbook]:
+    def orderbooks(self) -> OrderbookState:
         """
         Получить актуальный ордербук.
         :return: актуальный ордербук
         """
-        return self._orderbook_state.orderbooks
+        return self._orderbook_state
 
     def cancel_all_orders(self) -> None:
         """
@@ -180,7 +196,9 @@ class Trader(object):
         :param orders: ордера, который нужно разместить на бирже (один или несколько);
         :return: None
         """
-        command = self._formatter.format_create_orders(*orders)
+        self.add_orders(*orders)
+        command = self._formatter.format_create_orders(orders)
+        self._orders_state.set_orders_state(*orders, state=enums.OrderState.PLACING)
         self._communicator.publish(message=command)
 
     def cancel_orders(self, *orders: OrderData) -> None:
@@ -189,7 +207,7 @@ class Trader(object):
         :param orders: ордера, который нужно отменить (один или несколько)
         :return: None
         """
-        command = self._formatter.format_cancel_orders(*orders)
+        command = self._formatter.format_cancel_orders(orders)
         self._communicator.publish(message=command)
 
     def request_update_orders(self, *orders: OrderData) -> None:
@@ -198,7 +216,7 @@ class Trader(object):
         :param orders: один или несколько ордеров.
         :return: None
         """
-        command = self._formatter.format_get_orders(*orders)
+        command = self._formatter.format_get_orders(orders)
         self._communicator.publish(message=command)
 
     def request_update_balances(self, assets: list[str]) -> None:
@@ -210,13 +228,14 @@ class Trader(object):
         command = self._formatter.format_get_balance(assets=assets)
         self._communicator.publish(message=command)
 
-    def _update_orders(self, orders: list[OrderData]) -> None:
+    def _update_orders(self, orders: list[GateOrderInfo]) -> None:
         """
         Обновить данные по ордерам.
         :param orders: список данных по ордерам.
         :return: None
         """
-        self._orders_state.update(orders=orders)
+        formatted_orders = self._formatter.format_order_data(orders=orders)
+        self._orders_state.update(orders=formatted_orders)
 
     def _handle_core_input(self, message: Message) -> None:
         """
@@ -229,7 +248,7 @@ class Trader(object):
                 logger.warning(f'Received message of error: {message}')
             case enums.Event.DATA:
                 if isinstance(message.data, list) and message.data:
-                    logger.warning(f'Received orders: {message.data}')
+                    logger.debug(f'Received orders: {message.data}')
                     self._update_orders(orders=message.data)
                 else:
                     logger.error(f'Unexpected type of data: {message}')
@@ -272,7 +291,7 @@ class Trader(object):
 
     async def handle_subscriptions_loop(self):
         while True:
-            self._communicator.check_to_new_messages()
+            self._communicator.handle_new_messages()
             await asyncio.sleep(0.000001)
 
     def get_loop(self) -> Coroutine:

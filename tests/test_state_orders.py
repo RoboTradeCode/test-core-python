@@ -1,18 +1,15 @@
+import copy
 from unittest import TestCase
 
 from testing_core.store.state_orders import OrdersState
 from tests.data.orders import *
 
 
-def empty_func(_: OrderData):
-    ...
-
-
 class TestOrdersState(TestCase):
     def setUp(self) -> None:
         self.orders_state = OrdersState()
-        self.orders_state.add_order(order=order_1)
-        self.orders_state.add_order(order=order_2)
+        self.orders_state.add_order(order=copy.deepcopy(order_1))
+        self.orders_state.add_order(order=copy.deepcopy(order_2))
 
     def tearDown(self) -> None:
         self.orders_state.reset()

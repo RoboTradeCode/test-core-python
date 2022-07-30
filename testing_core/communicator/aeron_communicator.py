@@ -6,6 +6,7 @@ from typing import Callable
 import ujson
 from aeron import Publisher, Subscriber, AeronPublicationNotConnectedError, AeronPublicationError, \
     AeronPublicationAdminActionError
+from pydantic import ValidationError
 from ujson import JSONDecodeError
 
 from testing_core import enums
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 class Communicator(ABC):
     @abstractmethod
-    def check_to_new_messages(self):
+    def handle_new_messages(self):
         """
         Проверка на наличие новых сообщений
         """
@@ -107,7 +108,7 @@ class AeronCommunicator(Communicator):
         self._core_input = Subscriber(self._handler, self._channels.core_input.channel,
                                       self._channels.core_input.stream_id)
 
-    def check_to_new_messages(self) -> None:
+    def handle_new_messages(self) -> None:
         """
         Проверка на наличие новых сообщений
         """
@@ -123,13 +124,16 @@ class AeronCommunicator(Communicator):
         """
         # отправлять сообщение, пока не будет успешно
         is_successful = False
-        while not is_successful:
+        num_of_retries = 0
+        while not is_successful and num_of_retries < 5:
+
             try:
                 is_successful = self._try_to_publish(message)
 
             # обработка случая, когда нет подписчика
             except AeronPublicationNotConnectedError:
                 self._handle_no_subscriber(message)
+                break
             # обработка случая admin actin (сообщение будет отправлено снова)
             except AeronPublicationAdminActionError:
                 continue
@@ -143,11 +147,11 @@ class AeronCommunicator(Communicator):
 
     def _handler(self, message_as_str: str):
         """Форматирование сообщения, отправка на лог-сервер, передача callback-функции"""
-        logger.info(f'Received message on aeron: {message_as_str}')
+        logger.debug(f'Received message on aeron: {message_as_str}')
         try:
             # парсинг сообщения
-            message_as_json = ujson.loads(message_as_str)
-            message = Message(**message_as_json)
+            message_as_dict = ujson.loads(message_as_str)
+            message = Message(**message_as_dict)
 
             handler = self._match_action_to_handler(message=message)
             handler(message)
@@ -160,6 +164,22 @@ class AeronCommunicator(Communicator):
 
         except JSONDecodeError:
             logger.error(f'Failed to parse json: {message_as_str}')
+            message_error = self._formatter.format_error(
+                action=None,
+                message='Failed to handle command',
+                event_id=None,
+                data=message_as_str
+            )
+            self.publish(message_error)
+        except ValidationError as exception:
+            logger.error(f'Invalid format of message: {message_as_str}, exception: {exception}')
+            message_error = self._formatter.format_error(
+                action=None,
+                message='Failed to handle command',
+                event_id=None,
+                data=message_as_str
+            )
+            self.publish(message_error)
         except Exception as e:
             logger.error(f'Failed to handle message. Exception: {e}.\n Faulty message: {message_as_str}', exc_info=True)
             message_error = self._formatter.format_error(
@@ -168,7 +188,7 @@ class AeronCommunicator(Communicator):
                 event_id=None,
                 data=message_as_str
             )
-            self._logs.offer(message_error.json())
+            self.publish(message_error)
 
     def _try_to_publish(self, message: Message) -> bool:
         """
@@ -179,7 +199,8 @@ class AeronCommunicator(Communicator):
         message_json = message.json()
         if message.event == enums.Event.COMMAND:
             self._gate_input.offer(message_json)
-        self._logs.offer(message.json())
+        elif message.event == enums.Event.ERROR:
+            self._logs.offer(message_json)
         return True
 
     def _handle_no_subscriber(self, message):
@@ -190,7 +211,7 @@ class AeronCommunicator(Communicator):
             self._last_log_time = time.time()
             self._events_without_subscriber.clear()
 
-        if message.action not in self._events_without_subscriber:
+        if message.event not in self._events_without_subscriber:
             self._events_without_subscriber.append(message.event)
             logger.warning(f'Event {message.event.value} not have a subscriber.')
 
@@ -206,7 +227,7 @@ class AeronCommunicator(Communicator):
             case Action.CREATE_ORDERS | Action.CANCEL_ORDERS | \
                  Action.CANCEL_ALL_ORDERS | Action.GET_ORDERS | Action.ORDERS_UPDATE:
                 handler = self._core_input_handler
-            case Action.GET_BALANCE | Action.BALANCES_UPDATE:
+            case Action.GET_BALANCE | Action.BALANCE_UPDATE:
                 handler = self._balance_handler
             case _:
                 raise UnexpectedAction

@@ -11,7 +11,8 @@ import click
 import pydantic
 import tomli as tomli
 
-from strategies.strategies_for_testing.fast_testing import FastStrategy
+from strategies.strategies_for_testing.cancelling_testing import CancellingTesting
+from strategies.strategies_for_testing.fast_testing import FastTesting
 from testing_core.config import receive_configuration
 from testing_core.strategy.base_strategy import Strategy
 from testing_core.trader.trader import Trader
@@ -44,20 +45,24 @@ async def run_core(strategy_type: Type[Strategy]):
     try:
         config = await receive_configuration(basic_settings=basic_settings['configuration'])
         trader = Trader(config=config)
-        strategy = strategy_type(trader=trader)
-
+        strategy = strategy_type(trader=trader, markets=config.markets, assets=config.assets)
         loop = asyncio.get_event_loop()
 
-        logger.info(f'Start strategy "{strategy.name}": {strategy.description}')
+        logger.info(f'Start strategy "{strategy.name}": {strategy.__doc__}')
+
         trader_executing = loop.create_task(trader.get_loop())
-        strategy_executing = loop.create_task(strategy.execute())
-        await asyncio.gather(
-            trader_executing,
-            strategy_executing
-        )
+        strategy_executing = loop.create_task(strategy.strategy(
+            trader=trader,
+            orderbooks=trader.orderbooks,
+            balances=trader.balances
+        ))
+
+        await strategy_executing
+
     except pydantic.error_wrappers.ValidationError as exception:
         logger.critical(f'Invalid of missed field in configuration: {exception}. '
-                        f'Please, make sure that specified fields are in configuration and they are correct.')
+                        f'Please, make sure that specified fields are in configuration '
+                        f'and they are correct.')
         exit(1)
 
 
@@ -67,16 +72,17 @@ def cli():
 
 
 @click.command()
-def fast_strategy():
+def fast_testing():
     """Тип тестирования, при котором ядро прогоняет все команды и тестирует выставлени и отмену ордеров,
     получение баланса и ордербуков. То есть тестируется весь функционал, но макисмально быстро.
     Данный тест будет использоваться при незначительных изменениях гейта для проверки его работоспособности.
-
-    :param exchange_name: Название биржи, для которой будет запущен тест.
-    :return:
     """
-    strategy = FastStrategy
-    run_core(strategy_type=strategy)
+    asyncio.run(run_core(strategy_type=FastTesting))
+
+
+@click.command()
+def cancelling_testing():
+    asyncio.run(run_core(strategy_type=CancellingTesting))
 
 
 # @click.command()
@@ -111,8 +117,8 @@ def fast_strategy():
 
 
 # cli.add_command(listener)
-cli.add_command(fast_strategy)
-# cli.add_command(long_test)
+cli.add_command(fast_testing)
+cli.add_command(cancelling_testing)
 
 #
 if __name__ == '__main__':

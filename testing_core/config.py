@@ -2,6 +2,7 @@ import json
 import logging
 import asyncio
 from pprint import pprint
+from typing import Optional
 
 import requests
 from pydantic import BaseModel
@@ -26,15 +27,45 @@ class CoreAeronChannels(BaseModel):
     logs: AeronChannel
 
 
+class Market(BaseModel):
+    """
+    Класс для хранения данных о торговой паре на бирже
+    exchange_symbol: str - как торговая пара называется на бирже (примеры: BTC/USDT, ETH-USDT, fBTCUST)
+    common_symbol: str - универсальное название торговой пары (примеры: BTC/USDT, ETH/USDT, SHIB/BTC)
+    price_increment: float - шаг цены (примеры: 0.00001, 0.5, 0.025)
+    amount_increment: float - шаг объема (примеры: 0.00001, 0.5, 0.025)
+    min_amount: float - минимальный объем ордера
+    max_amount: float - максимальный объем ордера
+    base_asset: str - базовый актив
+    quote_asset: str - котируемый актив
+    """
+    class Limits(BaseModel):
+        class MinMax(BaseModel):
+            min: Optional[float]
+            max: Optional[float]
+        amount: MinMax
+        price: MinMax
+        cost: MinMax
+        leverage: MinMax
+
+    exchange_symbol: str
+    common_symbol: str
+    price_increment: Optional[float]
+    amount_increment: Optional[float]
+    limits: Limits
+    base_asset: str
+    quote_asset: str
+
 class Configuration(BaseModel):
 
-    # General gate settings
+    # General settings
     exchange_id: str
     instance: str
     node: enums.Node = enums.Node.CORE
     algo: str
-    symbols: list[str]
     assets: list[str]
+    markets: dict[str, Market]
+    orderbook_depth: int = 3
 
     # Aeron communicator settings
     aeron_channels: CoreAeronChannels
@@ -50,8 +81,8 @@ def parse_configuration(configuration: dict) -> Configuration:
         exchange_id=follow_path(configuration, 'exchange'),
         instance=follow_path(configuration, 'instance'),
         algo=follow_path(configuration, 'algo'),
-        symbols=[market['common_symbol'] for market in follow_path(configuration, 'data/markets')],
         assets=[asset_label['common'] for asset_label in follow_path(configuration, 'data/assets_labels')],
+        markets={market['common_symbol']: Market(**market) for market in follow_path(configuration, 'data/markets')},
 
         # Aeron communicator settings
         aeron_channels=CoreAeronChannels(

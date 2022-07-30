@@ -1,19 +1,25 @@
+import logging
+
+from testing_core import enums
 from testing_core.order.order import Order, OrderData, OrderUpdatable
 
+logger = logging.getLogger(__name__)
 
 class OrdersState(object):
     """
     Класс для хранения и обновления состояний ордеров
     """
-    _orders: dict[str: OrderUpdatable] = {}
+    def __init__(self):
+        self._orders: dict[str: OrderUpdatable] = {}
 
-    def add_order(self, order: OrderUpdatable):
+    def add_order(self, *orders: OrderUpdatable):
         """
-        Добавить новый ордер.
+        Добавить новый ордер. Если ордер уже существует, он будет обновлен.
 
         :param order: ордер, который нужно добавить;
         """
-        self._orders[order.core_order_id] = order
+        for order in orders:
+            self._orders[order.core_order_id] = order
 
     def remove_order(self, order: OrderData) -> bool:
         """
@@ -36,6 +42,18 @@ class OrdersState(object):
         for order_data in orders:
             if order := self._orders.get(order_data.core_order_id):
                 order.update(order_data=order_data)
+            else:
+                logger.warning(f'Unknown order with id: {order_data.core_order_id}')
+
+    def set_orders_state(self, *orders: OrderData, state: enums.OrderState) -> None:
+        """
+        Установить новое состояние для одного или нескольких ордеров:
+        :param orders: ордера, которым нужно обновить состояние:
+        :param state: новое состояние
+        """
+        for order_data in orders:
+            if order := self._orders.get(order_data.core_order_id):
+                order.state = state
 
     def reset(self):
         """
