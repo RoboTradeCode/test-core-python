@@ -8,8 +8,8 @@ from tests.data.orders import *
 class TestOrdersState(TestCase):
     def setUp(self) -> None:
         self.orders_state = OrdersState()
-        self.orders_state.add_order(order=copy.deepcopy(order_1))
-        self.orders_state.add_order(order=copy.deepcopy(order_2))
+        self.orders_state.add_order(copy.deepcopy(order_1))
+        self.orders_state.add_order(copy.deepcopy(order_2))
 
     def tearDown(self) -> None:
         self.orders_state.reset()
@@ -19,7 +19,7 @@ class TestOrdersState(TestCase):
         self.assertEqual(self.orders_state.orders, {})
 
     def test_add_order(self):
-        self.orders_state.add_order(order=order_3)
+        self.orders_state.add_order(order_3)
         self.assertTrue(self.orders_state.orders[order_3.core_order_id] == order_3)
         self.assertTrue(len(self.orders_state.orders.values()) == 3)
 
