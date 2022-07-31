@@ -13,6 +13,7 @@ import tomli as tomli
 
 from strategies.strategies_for_testing.cancelling_testing import CancellingTesting
 from strategies.strategies_for_testing.fast_testing import FastTesting
+from strategies.strategies_for_testing.order_creating_testing import OrderCreatingTesting
 from testing_core.config import receive_configuration
 from testing_core.strategy.base_strategy import Strategy
 from testing_core.trader.trader import Trader
@@ -85,6 +86,11 @@ def cancelling_testing():
     asyncio.run(run_core(strategy_type=CancellingTesting))
 
 
+@click.command()
+def order_creating_testing():
+    asyncio.run(run_core(strategy_type=OrderCreatingTesting))
+
+
 # @click.command()
 # def long_test():
 #     """При этом тестировании ядро запускается на продолжительное время (несколько дней) и реализует
@@ -119,6 +125,7 @@ def cancelling_testing():
 # cli.add_command(listener)
 cli.add_command(fast_testing)
 cli.add_command(cancelling_testing)
+cli.add_command(order_creating_testing)
 
 #
 if __name__ == '__main__':
