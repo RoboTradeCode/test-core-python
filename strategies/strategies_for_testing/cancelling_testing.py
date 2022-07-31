@@ -85,7 +85,7 @@ class CancellingTesting(Strategy):
                          'Только ордера создаем Только ордера создаем одной командой, и отменяем '
                          'командой `cancel_all_orders')
 
-        self.logger.info(' 3. Выбираем случайным образом рынок (BTC/USDT) из настроек, и ставим по нему 1 ордер.')
+        self.logger.info('7.1. Выбираем случайным образом рынок (BTC/USDT) из настроек, и ставим по нему 1 ордер.')
 
         orders = [self.get_order(order_type='limit', orderbooks=orderbooks, balances=balances) for _ in range(7)]
         trader.place_orders(*orders)
@@ -98,17 +98,18 @@ class CancellingTesting(Strategy):
                     continue
             break
 
-        self.logger.info('4. Баланс после установки должен измениться, а именно, поле `used`')
+        self.logger.info('7.2. Баланс после установки должен измениться, а именно, поле `used`')
         if self.check_balances_to_free(balances=balances):
             self.logger.critical(
                 f'TEST FAILED. После создания ордера должен был появиться используемый баланс: {balances}')
             return
 
-        self.logger.info('5. Отменяем ранее выставленный ордер по id')
+        self.logger.info('7.3 Отменяем ранее выставленный ордер по id')
         trader.cancel_all_orders()
 
-        self.logger.info('6. Проверяем баланс, поле `used` у ассетов должно быть нулевым, если не нулевое -'
+        self.logger.info('7.4. Проверяем баланс, поле `used` у ассетов должно быть нулевым, если не нулевое -'
                          ' тест провален')
+        trader.request_update_balances(self.assets)
         await asyncio.sleep(5)
         if not self.check_balances_to_free(balances):
             self.logger.critical(f'TEST FAILED. Не удалось отменить ордера, есть используемый баланс: {balances}')
