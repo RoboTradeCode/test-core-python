@@ -153,7 +153,7 @@ class CancellingTesting(Strategy):
             elif balances[market.quote_asset].free > amount:
                 price = market_price * 0.9
                 return self.trader.create_unplaced_order(
-                    symbol='BTC/USDT',
+                    symbol=symbol,
                     order_type=order_type,
                     side='buy',
                     price=price,

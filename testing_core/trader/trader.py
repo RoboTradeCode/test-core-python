@@ -81,7 +81,8 @@ class Trader(object):
             price: float,
             amount: float,
             id_prefix: str = '',
-            id_postfix: str = ''
+            id_postfix: str = '',
+            enable_validating: bool = True
     ) -> Order:
         """
         Создать ордер и разместить его на бирже
@@ -93,6 +94,7 @@ class Trader(object):
         :return: созданный ордер
         :param id_prefix: префикс для id, опционально;
         :param id_postfix: постфикс для id, опционально;
+        :param enable_validating: bool - по умолчанию True. Если True, проверять ордер на лимиты;
         :return: созданный ордер
         """
         order = self.create_unplaced_order(
@@ -103,6 +105,7 @@ class Trader(object):
             amount=amount,
             id_prefix=id_prefix,
             id_postfix=id_postfix,
+            enable_validating=enable_validating
         )
 
         # размещение ордера на бирже
@@ -118,7 +121,8 @@ class Trader(object):
             price: float,
             amount: float,
             id_prefix: str = '',
-            id_postfix: str = ''
+            id_postfix: str = '',
+            enable_validating: bool = True
     ):
         """
         Создать ордер без размещения на бирже (можно разместить позднее);
@@ -130,6 +134,7 @@ class Trader(object):
         :return: созданный ордер
         :param id_prefix: префикс для id, опционально;
         :param id_postfix: постфикс для id, опционально;
+        :param enable_validating: bool - по умолчанию True. Если True, проверять ордер на лимиты;
         :return: созданный ордер
         """
         # Создаю core order id
@@ -149,7 +154,8 @@ class Trader(object):
             order_type=order_type,
             side=side,
             price=price,
-            amount=amount
+            amount=amount,
+            enable_validating=enable_validating
         )
 
         # добавляю ордер в хранилище ордеров

@@ -43,7 +43,8 @@ class OrderFabric(object):
                      order_type: OrderType,
                      side: OrderSide,
                      price: float,
-                     amount: float
+                     amount: float,
+                     enable_validating: bool = True
                      ) -> OrderUpdatable:
         """
         Создать ордер.
@@ -54,6 +55,7 @@ class OrderFabric(object):
         :param side: сторона ордера, buy или sell;
         :param price: цена ордера, обязательно для всех типов ордеров (для market тоже);
         :param amount: объем ордера;
+        :param enable_validating: bool - по умолчанию True. Если True, проверять ордер на лимиты;
         :return: созданный ордер
         """
         order = OrderUpdatable(
@@ -68,7 +70,7 @@ class OrderFabric(object):
             cancel_function=self._cancel_function
         )
         order = self.truncate_values_to_increment(order)
-        if not self.check_order_to_limits(order):
+        if enable_validating and not self.check_order_to_limits(order):
             logger.error(f'Limit violation on order: {order}')
             raise LimitViolation
         return order

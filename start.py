@@ -5,10 +5,10 @@ import asyncio
 
 import click
 
-from strategies.strategies_for_testing.cancelling_testing import CancellingTesting
-from strategies.strategies_for_testing.fast_testing import FastTesting
-from strategies.strategies_for_testing.order_creating_testing import OrderCreatingTesting
-from strategies.strategies_for_testing.orderbook_testing import OrderbookTesting
+from strategies.strategies_for_testing.orders_cancelling import CancellingTesting
+from strategies.strategies_for_testing.fast_test import FastTesting
+from strategies.strategies_for_testing.order_creating import OrderCreatingTesting
+from strategies.strategies_for_testing.orderbooks import OrderbookTesting
 from testing_core.core import run_core
 
 
