@@ -13,10 +13,11 @@ class OrderbookState(object):
         """
         Обновить ордербук.
 
+        :param update_timestamp: timestamp обновления ордербука на бирже
         :param orderbook: актуальный ордербук.
         """
         self.orderbooks[orderbook.symbol] = orderbook
-        self.last_update_timestamp = get_micro_timestamp()
+        self.last_update_timestamp = orderbook.timestamp
 
     def __getitem__(self, symbol: str) -> Orderbook:
         """
