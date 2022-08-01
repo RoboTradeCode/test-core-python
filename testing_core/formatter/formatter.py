@@ -166,10 +166,11 @@ class Formatter(object):
             case _:
                 return enums.OrderState.ERROR
 
-    def format_order_data(self, orders: list[GateOrderInfo]) -> list[OrderData]:
+    def format_order_data(self, orders: list[GateOrderInfo], is_error: bool = False) -> list[OrderData]:
         """
         Форматировать список из данных по ордерам во внутренний формат данных;
         :param orders: список ордеров в общем формате;
+        :param is_error: указывает, что нужно выставить стейт error;
         :return: список ордеров во внутреннем формате;
         """
         formatted_orders: list[OrderData] = []
@@ -182,7 +183,7 @@ class Formatter(object):
                 amount=order.amount,
                 price=order.price,
                 filled=order.filled,
-                state=self.format_order_state(order)
+                state=self.format_order_state(order) if not is_error else enums.OrderState.ERROR
             ))
         return formatted_orders
 

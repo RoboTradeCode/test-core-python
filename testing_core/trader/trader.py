@@ -234,13 +234,14 @@ class Trader(object):
         command = self._formatter.format_get_balance(assets=assets)
         self._communicator.publish(message=command)
 
-    def _update_orders(self, orders: list[GateOrderInfo]) -> None:
+    def _update_orders(self, orders: list[GateOrderInfo], is_error: bool = False) -> None:
         """
         Обновить данные по ордерам.
-        :param orders: список данных по ордерам.
+        :param orders: список данных ыпо ордерам.
+        :param is_error: указывает, что ордера не были выставлены из-за ошибки.
         :return: None
         """
-        formatted_orders = self._formatter.format_order_data(orders=orders)
+        formatted_orders = self._formatter.format_order_data(orders=orders, is_error=is_error)
         self._orders_state.update(orders=formatted_orders)
 
     def _handle_core_input(self, message: Message) -> None:
@@ -252,6 +253,9 @@ class Trader(object):
         match message.event:
             case enums.Event.ERROR:
                 logger.warning(f'Received message of error: {message}')
+                if message.action == enums.Action.CREATE_ORDERS:
+                    self._update_orders(orders=message.data, is_error=True)
+
             case enums.Event.DATA:
                 if isinstance(message.data, list) and message.data:
                     logger.debug(f'Received orders: {message.data}')

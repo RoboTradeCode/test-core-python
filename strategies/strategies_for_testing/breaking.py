@@ -48,6 +48,10 @@ class BreakingTesting(Strategy):
             price=0
         )
         zero_price_order.place()
+        if not await self.wait_for_order_state(zero_price_order, enums.OrderState.ERROR, 5):
+            self.logger.critical(
+                f'TEST FAILED. Ордер не вернулся с ошибкой {zero_price_order}')
+            return
 
         self.logger.info('2. Создаем лимитный и рыночный ордер с нулевым объемом и ждем ошибку.')
         zero_amount_limit_order = self.get_order(
@@ -59,14 +63,26 @@ class BreakingTesting(Strategy):
             amount=0
         )
         zero_amount_limit_order.place()
+        if not await self.wait_for_order_state(zero_amount_limit_order, enums.OrderState.ERROR, 5):
+            self.logger.critical(
+                f'TEST FAILED. Ордер не вернулся с ошибкой {zero_amount_limit_order}')
+            return
         zero_amount_market_order.place()
+        if not await self.wait_for_order_state(zero_amount_market_order, enums.OrderState.ERROR, 5):
+            self.logger.critical(
+                f'TEST FAILED. Ордер не вернулся с ошибкой {zero_amount_market_order}')
+            return
 
         self.logger.info('3. Создаем ордер с `кривым` символом, ждем от гейта ошибку')
-        zero_price_order = self.get_order(
+        invalid_symbol_order = self.get_order(
             order_type='limit',
             price=0
         )
-        zero_price_order.place()
+        invalid_symbol_order.place()
+        if not await self.wait_for_order_state(invalid_symbol_order, enums.OrderState.ERROR, 5):
+            self.logger.critical(
+                f'TEST FAILED. Ордер не вернулся с ошибкой {invalid_symbol_order}')
+            return
 
         self.logger.info('4. Отправляем ордер с пустым `client_order_id` - ждем ошибку гейта.')
         empty_id_order = self.get_order(
@@ -75,6 +91,10 @@ class BreakingTesting(Strategy):
         )
         empty_id_order.core_order_id = ''
         empty_id_order.place()
+        if not await self.wait_for_order_state(empty_id_order, enums.OrderState.ERROR, 5):
+            self.logger.critical(
+                f'TEST FAILED. Ордер не вернулся с ошибкой {empty_id_order}')
+            return
 
         self.logger.info('5. Отправляем 10 ордеров в одной команде, из которых часть нормальных, '
                          'часть кривых, ждем от гейта чтобы на кривые пришла ошибка.')
@@ -82,16 +102,35 @@ class BreakingTesting(Strategy):
             if i % 2 == 0:
                 # create invalid order
                 order = self.get_order(order_type='limit', amount=-10)
+                order.place()
+                if not await self.wait_for_order_state(empty_id_order, enums.OrderState.ERROR, 5):
+                    self.logger.critical(
+                        f'TEST FAILED. Ордер не вернулся с ошибкой {empty_id_order}')
             else:
                 order = self.get_order(order_type='limit')
-            order.place()
+                order.place()
+                if not await self.wait_for_order_state(empty_id_order, enums.OrderState.OPEN, 5):
+                    self.logger.critical(
+                        f'TEST FAILED. Ордер не был открыт на бирже {empty_id_order}')
+            return
 
         self.logger.info('6. Создаем команду с 10 ордерами, 1 из них кривой, должно прийти '
                          '9 статусов open и одна ошибка.')
         partially_invalid_orders = [self.get_order('limit') for _ in range(9)]
-        # create invalid order
+        # создание неправильных ордеров
         partially_invalid_orders.append(self.get_order('limit', amount=-10))
         trader.place_orders(*partially_invalid_orders)
+        await asyncio.sleep(10)
+
+        # проверка, что не был выставлен только неправильный ордер
+        for order in partially_invalid_orders[:9]:
+            if order.state in [enums.OrderState.PLACING, enums.OrderState.ERROR]:
+                self.logger.critical(
+                    f'TEST FAILED. Ордер не был открыт на бирже {empty_id_order}')
+        if partially_invalid_orders[9].state != enums.OrderState.ERROR:
+            self.logger.critical(
+                f'TEST FAILED. Ордер не вернулся с ошибкой {empty_id_order}')
+
 
         self.logger.info('SUCCESS. Тест успешно пройден.')
         return
@@ -141,3 +180,15 @@ class BreakingTesting(Strategy):
                     enable_validating=False
                 )
         raise InsufficientBalance
+
+    async def wait_for_order_state(self, order: Order, state: enums.OrderState, max_waiting_time: int):
+        """
+        Дождаться пока ордер примет правильное состояние. Есть ограничение максимального времени ожидания
+        """
+        sleeping_time = 0
+        while order.state != state:
+            await asyncio.sleep(0.1)
+            sleeping_time += 0.1
+            if sleeping_time >= max_waiting_time:
+                return False
+        return True
