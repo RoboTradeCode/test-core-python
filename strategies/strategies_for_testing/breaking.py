@@ -99,20 +99,22 @@ class BreakingTesting(Strategy):
         self.logger.info('5. Отправляем 10 ордеров в одной команде, из которых часть нормальных, '
                          'часть кривых, ждем от гейта чтобы на кривые пришла ошибка.')
         for i in range(10):
+            self.logger.info(f'Order {i}')
             if i % 2 == 0:
                 # create invalid order
                 order = self.get_order(order_type='limit', amount=-10)
                 order.place()
-                if not await self.wait_for_order_state(empty_id_order, enums.OrderState.ERROR, 5):
+                if not await self.wait_for_order_state(order, enums.OrderState.ERROR, 5):
                     self.logger.critical(
-                        f'TEST FAILED. Ордер не вернулся с ошибкой {empty_id_order}')
+                        f'TEST FAILED. Ордер не вернулся с ошибкой {order}')
+                    return
             else:
                 order = self.get_order(order_type='limit')
                 order.place()
-                if not await self.wait_for_order_state(empty_id_order, enums.OrderState.OPEN, 5):
+                if not await self.wait_for_order_state(order, enums.OrderState.OPEN, 5):
                     self.logger.critical(
-                        f'TEST FAILED. Ордер не был открыт на бирже {empty_id_order}')
-            return
+                        f'TEST FAILED. Ордер не был открыт на бирже {order}')
+                    return
 
         self.logger.info('6. Создаем команду с 10 ордерами, 1 из них кривой, должно прийти '
                          '9 статусов open и одна ошибка.')
@@ -131,6 +133,8 @@ class BreakingTesting(Strategy):
             self.logger.critical(
                 f'TEST FAILED. Ордер не вернулся с ошибкой {empty_id_order}')
 
+        trader.cancel_all_orders()
+        await asyncio.sleep(1)
 
         self.logger.info('SUCCESS. Тест успешно пройден.')
         return
@@ -166,7 +170,7 @@ class BreakingTesting(Strategy):
                     symbol=symbol if symbol_in_order is None else symbol_in_order,
                     order_type=order_type,
                     side='sell',
-                    price=price,
+                    price=price * 1.1,
                     amount=amount,
                     enable_validating=False,
                 )
@@ -175,7 +179,7 @@ class BreakingTesting(Strategy):
                     symbol=symbol if symbol_in_order is None else symbol_in_order,
                     order_type=order_type,
                     side='buy',
-                    price=price,
+                    price=price * 0.9,
                     amount=amount,
                     enable_validating=False
                 )

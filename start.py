@@ -5,6 +5,7 @@ import asyncio
 
 import click
 
+from strategies.strategies_for_testing.breaking import BreakingTesting
 from strategies.strategies_for_testing.orders_cancelling import CancellingTesting
 from strategies.strategies_for_testing.fast_test import FastTesting
 from strategies.strategies_for_testing.order_creating import OrderCreatingTesting
@@ -39,6 +40,11 @@ def order_creating_testing():
 @cli.command()
 def orderbook_testing():
     asyncio.run(run_core(strategy_type=OrderbookTesting))
+
+
+@cli.command()
+def breaking_testing():
+    asyncio.run(run_core(strategy_type=BreakingTesting))
 
 
 if __name__ == '__main__':

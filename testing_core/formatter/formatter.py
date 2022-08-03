@@ -182,7 +182,7 @@ class Formatter(object):
                 side=order.side,
                 amount=order.amount,
                 price=order.price,
-                filled=order.filled,
+                filled=order.filled if not is_error else 0.0,
                 state=self.format_order_state(order) if not is_error else enums.OrderState.ERROR
             ))
         return formatted_orders
