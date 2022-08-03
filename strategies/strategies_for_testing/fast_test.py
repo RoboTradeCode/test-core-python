@@ -77,6 +77,8 @@ class FastTesting(Strategy):
 
         self.logger.info(f'Market order: {market_order}')
 
+        self.logger.info('SUCCESS. Test completed.')
+
     def get_order(self, order_type: str, price_btcusdt: float, price_ethusdt: float, balances: BalancesState) -> Order:
         if balances['BTC'].free > 11 / price_btcusdt:
             amount = 10.5 / price_btcusdt
