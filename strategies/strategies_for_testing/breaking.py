@@ -102,7 +102,7 @@ class BreakingTesting(Strategy):
             self.logger.info(f'Order {i}')
             if i % 2 == 0:
                 # create invalid order
-                order = self.get_order(order_type='limit', amount=-10)
+                order = self.get_order(order_type='limit', amount=10**20)
                 order.place()
                 if not await self.wait_for_order_state(order, enums.OrderState.ERROR, 5):
                     self.logger.critical(
@@ -120,9 +120,9 @@ class BreakingTesting(Strategy):
                          '9 статусов open и одна ошибка.')
         partially_invalid_orders = [self.get_order('limit') for _ in range(9)]
         # создание неправильных ордеров
-        partially_invalid_orders.append(self.get_order('limit', amount=-10))
+        partially_invalid_orders.append(self.get_order('limit', amount=10**20))
         trader.place_orders(*partially_invalid_orders)
-        await asyncio.sleep(10)
+        await asyncio.sleep(5)
 
         # проверка, что не был выставлен только неправильный ордер
         for order in partially_invalid_orders[:9]:
@@ -162,10 +162,10 @@ class BreakingTesting(Strategy):
             market_price = (orderbooks[symbol].bids[0][0] + orderbooks[symbol].asks[0][0]) / 2
             price = market_price if price is None else price
             if amount is None and market.limits.cost.min is not None:
-                amount = market.limits.cost.min / market_price * 1.1
+                amount = market.limits.cost.min / market_price * 1.15
             elif amount is None:
-                amount = market.limits.amount.min * market_price * 1.1
-            if balances[market.base_asset].free > amount:
+                amount = market.limits.amount.min * market_price * 1.15
+            if balances[market.base_asset].free > balances[market.quote_asset].free:
                 return self.trader.create_unplaced_order(
                     symbol=symbol if symbol_in_order is None else symbol_in_order,
                     order_type=order_type,
@@ -174,7 +174,7 @@ class BreakingTesting(Strategy):
                     amount=amount,
                     enable_validating=False,
                 )
-            elif balances[market.quote_asset].free > amount:
+            else:
                 return self.trader.create_unplaced_order(
                     symbol=symbol if symbol_in_order is None else symbol_in_order,
                     order_type=order_type,
