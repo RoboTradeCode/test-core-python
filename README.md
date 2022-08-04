@@ -14,6 +14,13 @@
 *   orderbook-testing      - Стратегия для тестирования ордербуков.
 *   breaking-testing       - Стратегия неправильного поведения ядра.
 	
+	
+	
+## Архитектура ядра
+
+![Core Architecture(2)(3)(1)(1)-Page-1](https://user-images.githubusercontent.com/66905267/182893172-c8dba1de-622f-4dfe-bfbe-1c98e87ad0b1.jpg)
+
+
 ## Установка
 
 1. Установка python 3.10:
