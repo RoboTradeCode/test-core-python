@@ -45,7 +45,7 @@ async def run_core(strategy_type: Type[Strategy]):
         logger.info(f'Start strategy "{strategy.name}": {strategy.__doc__}')
 
         trader_executing = loop.create_task(trader.get_loop())
-        strategy_executing = loop.create_task(strategy.strategy(
+        strategy_executing = loop.create_task(strategy.execute(
             trader=trader,
             orderbooks=trader.orderbooks,
             balances=trader.balances

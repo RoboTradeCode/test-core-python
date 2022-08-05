@@ -28,7 +28,7 @@ class CancellingTesting(Strategy):
     """
     name = 'Cancelling Testing'
 
-    async def strategy(self, trader: Trader, orderbooks: OrderbookState, balances: BalancesState):
+    async def execute(self, trader: Trader, orderbooks: OrderbookState, balances: BalancesState):
         """
         Стратегия для быстрого тестирования гейта.
         :param trader:
@@ -40,6 +40,8 @@ class CancellingTesting(Strategy):
                          '(пока что ответ на отмену еще не реализован)')
         trader.cancel_all_orders()
         trader.request_update_balances(assets=self.assets)
+        # небольшая задержка, чтобы успела исполниться команда cancel_all_orders
+        await asyncio.sleep(0.5)
 
         self.logger.info('Жду баланс и ордербуки...')
         # проверяю наличие балансов, а также проверяю с помощью множеств, что для каждого маркета пришел ордербук
@@ -133,14 +135,20 @@ class CancellingTesting(Strategy):
         :param balances:
         :return:
         """
+        # перемешиваю маркеты, чтобы получить случайный и создать по нему ордер (если хватит баланса)
         shuffled_markets = list(self.markets.items())
         random.shuffle(shuffled_markets)
         for symbol, market in shuffled_markets:
             market_price = orderbooks[symbol].bids[0][0]
+
+            # вычисляю минимальные корректный объем ордера
+            amount = 0
             if market.limits.cost.min is not None:
-                amount = market.limits.cost.min / market_price
-            else:
-                amount = market.limits.amount.min * market_price
+                # умножаю на коэффициент, чтобы объем был немного больше минимального
+                amount = market.limits.cost.min / market_price * 1.1
+            if market.limits.cost.min is None or amount < market.limits.amount.min:
+                # умножаю на коэффициен, чтобы объем был немного больше минимального
+                amount = market.limits.amount.min * 1.1
             if balances[market.base_asset].free > amount:
                 price = market_price * 1.1
                 return self.trader.create_unplaced_order(
