@@ -6,19 +6,43 @@ import asyncio
 import click
 
 from strategies.strategies_for_testing.breaking import BreakingTesting
-from strategies.strategies_for_testing.orders_cancelling import CancellingTesting
 from strategies.strategies_for_testing.fast_test import FastTesting
 from strategies.strategies_for_testing.order_creating import OrderCreatingTesting
 from strategies.strategies_for_testing.orderbooks import OrderbookTesting
+from strategies.strategies_for_testing.orders_cancelling import CancellingTesting
 from testing_core.core import run_core
 
 
-@click.group()
+class CustomMultiCommand(click.Group):
+
+    def command(self, *args, **kwargs):
+        """
+        Behaves the same as `click.Group.command()` except if passed
+        a list of names, all after the first will be aliases for the first.
+        """
+
+        def decorator(f):
+            if isinstance(args[0], list):
+                _args = [args[0][0]] + list(args[1:])
+                for alias in args[0][1:]:
+                    cmd = super(CustomMultiCommand, self).command(
+                        alias, *args[1:], **kwargs)(f)
+                    cmd.short_help = "Alias for '{}'".format(_args[0])
+            else:
+                _args = args
+            cmd = super(CustomMultiCommand, self).command(
+                *_args, **kwargs)(f)
+            return cmd
+
+        return decorator
+
+
+@click.group(cls=CustomMultiCommand)
 def cli():
     ...
 
 
-@cli.command()
+@cli.command(['fast-testing'])
 def fast_testing():
     """
     Быстрая стратегия тестирования гейта.
@@ -38,7 +62,7 @@ def fast_testing():
     asyncio.run(run_core(strategy_type=FastTesting))
 
 
-@cli.command()
+@cli.command(['cancelling-testing'])
 def cancelling_testing():
     """
     Стратегия тестирования отмены ордеров.
@@ -65,7 +89,7 @@ def cancelling_testing():
     asyncio.run(run_core(strategy_type=CancellingTesting))
 
 
-@cli.command()
+@cli.command(['order-creating-testing'])
 def order_creating_testing():
     """
     Стратегия тестирования создания ордеров.
@@ -90,7 +114,7 @@ def order_creating_testing():
     asyncio.run(run_core(strategy_type=OrderCreatingTesting))
 
 
-@cli.command()
+@cli.command(['orderbook-testing'])
 def orderbook_testing():
     """
     Стратегия для тестирования ордербуков.
@@ -106,7 +130,7 @@ def orderbook_testing():
     asyncio.run(run_core(strategy_type=OrderbookTesting))
 
 
-@cli.command()
+@cli.command(['breaking-testing'])
 def breaking_testing():
     """
     Стратегия неправильного поведения ядра.
@@ -126,6 +150,31 @@ def breaking_testing():
     6. Создаем команду с 10 ордерами, 1 из них кривой, должно прийти 9 статусов open и одна ошибка;
     """
     asyncio.run(run_core(strategy_type=BreakingTesting))
+
+
+async def run_all():
+    """
+    Асинхронная функция для запуска стратегий.
+    """
+    await run_core(strategy_type=FastTesting)
+    await run_core(strategy_type=OrderbookTesting)
+    await run_core(strategy_type=OrderCreatingTesting)
+    await run_core(strategy_type=CancellingTesting)
+    await run_core(strategy_type=BreakingTesting)
+
+
+@cli.command(['full-testing', 'all'])
+def full_testing():
+    """
+    По очереди запустить все тестирующие стратегии. Порядок следующий:
+
+    fast-testing
+    orderbook-testing
+    order-creating-testing
+    cancelling-testing
+    breaking-testing
+    """
+    asyncio.run(run_all())
 
 
 if __name__ == '__main__':
