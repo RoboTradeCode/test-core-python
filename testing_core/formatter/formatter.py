@@ -1,7 +1,7 @@
 from typing import Any
 
 from testing_core import enums
-from testing_core.models.message import Message, GateOrderToCreate, GateOrderId, GateOrderInfo
+from testing_core.models.message import Message, GateOrderToCreate, OrderId, GateOrderInfo, GateOrderId
 from testing_core.order.order import OrderData
 from testing_core.utils import get_uuid, get_micro_timestamp
 
@@ -93,7 +93,7 @@ class Formatter(object):
         return command
 
     @staticmethod
-    def format_order_ids(orders: tuple[OrderData]) -> list[GateOrderId]:
+    def format_gate_order_ids(orders: tuple[OrderData]) -> list[GateOrderId]:
         """
         Форматировать список ордеров в список идентификаторов ордеров (symbol и client_order_id)
         :param orders: список ордеров;
@@ -113,7 +113,7 @@ class Formatter(object):
         :param orders: список ордеров;
         :return: Message готовое сообщение, которое можно отправить гейту;
         """
-        order_ids = self.format_order_ids(orders=orders)
+        order_ids = self.format_gate_order_ids(orders=orders)
         command = self.format_command(action=enums.Action.CANCEL_ORDERS, data=order_ids)
         return command
 
@@ -134,7 +134,7 @@ class Formatter(object):
         :param orders: список ордеров;
         :return: Message готовое сообщение, которое можно отправить гейту;
         """
-        order_ids = self.format_order_ids(orders=orders)
+        order_ids = self.format_gate_order_ids(orders=orders)
         command = self.format_command(action=enums.Action.GET_ORDERS, data=order_ids)
         return command
 
@@ -184,6 +184,23 @@ class Formatter(object):
                 price=order.price,
                 filled=order.filled if not is_error else 0.0,
                 state=self.format_order_state(order) if not is_error else enums.OrderState.ERROR
+            ))
+        return formatted_orders
+
+    @staticmethod
+    def format_order_ids(orders: list[GateOrderId]) -> list[OrderId]:
+        """
+        Форматировать список из данных по ордерам во внутренний формат данных;
+        :param orders: список ордеров в общем формате;
+        :param is_error: указывает, что нужно выставить стейт error;
+        :return: список ордеров во внутреннем формате;
+        """
+        formatted_orders: list[OrderId] = []
+        for order in orders:
+            formatted_orders.append(OrderId(
+                core_order_id=order.client_order_id,
+                symbol=order.symbol,
+                id=order.id
             ))
         return formatted_orders
 

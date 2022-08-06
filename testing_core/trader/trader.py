@@ -8,7 +8,7 @@ from testing_core.config import Configuration
 from testing_core.enums import OrderType, OrderSide
 from testing_core.formatter.formatter import Formatter
 from testing_core.models.balance import Balance
-from testing_core.models.message import Message, Balances, GateOrderInfo
+from testing_core.models.message import Message, Balances, GateOrderInfo, OrderId, GateOrderId
 from testing_core.models.orderbook import Orderbook
 from testing_core.order.order import OrderData, Order, OrderUpdatable
 from testing_core.order.order_fabric import OrderFabric
@@ -244,6 +244,14 @@ class Trader(object):
         formatted_orders = self._formatter.format_order_data(orders=orders, is_error=is_error)
         self._orders_state.update(orders=formatted_orders)
 
+    def _set_canceled_orders(self, orders: list[GateOrderId]):
+        """
+        Задать статус отмененных ордеров
+        :param orders: список из объектов, идентифицирующих ордера
+        """
+        formatted_orders = self._formatter.format_order_ids(orders=orders)
+        self._orders_state.set_orders_state(*orders, state=enums.OrderState.CANCELED)
+
     def _handle_core_input(self, message: Message) -> None:
         """
         Обработчик сообщений канала core_input
@@ -252,14 +260,24 @@ class Trader(object):
         """
         match message.event:
             case enums.Event.ERROR:
-                logger.warning(f'Received message of error: {message}')
                 if message.action == enums.Action.CREATE_ORDERS:
+                    logger.info(f'Received error about order creating: {message}')
                     self._update_orders(orders=message.data, is_error=True)
+                else:
+                    logger.error(f'Received message of error: {message}')
 
             case enums.Event.DATA:
                 if isinstance(message.data, list) and message.data:
-                    logger.debug(f'Received orders: {message.data}')
-                    self._update_orders(orders=message.data)
+                    match message.action:
+                        case enums.Action.CREATE_ORDERS:
+                            logger.debug(f'Received {message.action.value} response: {message.data}')
+                            self._update_orders(orders=message.data)
+                        case enums.Action.CANCEL_ALL_ORDERS | enums.Action.CANCEL_ORDERS:
+                            logger.debug(f'Received {message.action.value} response: {message.data}')
+                            self._set_canceled_orders(orders=message.data)
+                        case _:
+                            logger.error(f'Unexpected action: {message}')
+
                 else:
                     logger.error(f'Unexpected type of data: {message}')
             case _:
