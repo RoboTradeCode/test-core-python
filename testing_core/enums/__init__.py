@@ -1,12 +1,15 @@
 from enum import Enum
 
 
-class OrderStatus(Enum):
+class GateOrderStatus(Enum):
     OPEN = 'open'
     CLOSED = 'closed'
     CANCELED = 'canceled'
     EXPIRED = 'expired'
     REJECTED = 'rejected'
+
+    def __repr__(self):
+        return self.value
 
 
 class OrderType(Enum):
@@ -16,10 +19,16 @@ class OrderType(Enum):
     FOK = 'fok'
     STOP_LIMIT = 'stop_limit'
 
+    def __repr__(self):
+        return self.value
+
 
 class OrderSide(Enum):
     BUY = 'buy'
     SELL = 'sell'
+
+    def __repr__(self):
+        return self.value
 
 
 class Event(Enum):
@@ -27,14 +36,20 @@ class Event(Enum):
     DATA = 'data'
     ERROR = 'error'
 
+    def __repr__(self):
+        return self.value
+
 
 class Node(Enum):
     CORE = 'core'
     GATE = 'gate'
 
+    def __repr__(self):
+        return self.value
+
 
 class Action(Enum):
-    ORDER_BOOK_UPDATE = 'order_book_update'
+    ORDERBOOK_UPDATE = 'order_book_update'
     CREATE_ORDERS = 'create_orders'
     CANCEL_ORDERS = 'cancel_orders'
     CANCEL_ALL_ORDERS = 'cancel_all_orders'
@@ -42,4 +57,20 @@ class Action(Enum):
     ORDERS_UPDATE = 'orders_update'
     GET_BALANCE = 'get_balance'
     PING = 'ping'
-    BALANCES_UPDATE = 'balances_update'
+    BALANCE_UPDATE = 'balance_update'
+
+    def __repr__(self):
+        return self.value
+
+
+class OrderState(Enum):
+    UNPLACED = 'unplaced'
+    PLACING = 'placing'
+    OPEN = 'open'
+    FILLED = 'filled'
+    CLOSED = 'closed'
+    CANCELED = 'canceled'
+    ERROR = 'error'
+
+    def __repr__(self):
+        return self.value
