@@ -23,8 +23,14 @@ class CancellingTesting(Strategy):
     4. Баланс после установки должен измениться, а именно, поле `used`
     5. Отменяем ранее выставленный ордер по id
     6. Проверяем баланс, поле `used` у ассетов должно быть нулевым, если не нулевое - тест провален
-    7. Выбираем случайным образом от 3 до 5 рынков из настроек и выполняем с п.3 - 7. Только ордера создаем одной
-    командой, и отменяем командой `cancel_all_orders`
+    7. Ордер должен бы получить статус cancelled.
+    8. Выбираем случайным образом от 3 до 5 рынков из настроек и выполняем с п.3 - 7., Только ордера
+    создаем одной командой, и отменяем командой`cancel_all_orders
+    8.1. Выбираем 5 случайных рынков и создаем по ним лимитные ордера.
+    8.2. Баланс после установки должен измениться, а именно, поле used
+    8.3 Отменяем ранее выставленный ордер
+    8.4. Проверяем баланс, поле used у ассетов должно быть нулевым, если не нулевое - тест провален
+    8.5 Ордера должны были получить статус cancelled, после получения сообщения об успешной отмене ордеров.
     """
     name = 'Cancelling Testing'
 
@@ -83,7 +89,7 @@ class CancellingTesting(Strategy):
             self.logger.critical(f'TEST FAILED. Не удалось отменить ордер, есть используемый баланс: {balances}')
             return
 
-        self.logger.info('7.5 Ордер должен бы получить статус cancelled.')
+        self.logger.info('7. Ордер должен бы получить статус cancelled.')
         if order.state != enums.OrderState.CANCELED:
             self.logger.critical(f'TEST FAILED. Не удалось отменить ордер, либо не был получен ответ '
                                  f'на команду отмены ордеров: {order}')
@@ -93,9 +99,9 @@ class CancellingTesting(Strategy):
                          'Только ордера создаем Только ордера создаем одной командой, и отменяем '
                          'командой `cancel_all_orders')
 
-        self.logger.info('8.1. Выбираем случайным образом рынок (BTC/USDT) из настроек, и ставим по нему 1 ордер.')
+        self.logger.info('8.1. Выбираем 5 случайных рынков и создаем по ним лимитные ордера.')
 
-        orders = [self.get_order(order_type='limit', orderbooks=orderbooks, balances=balances) for _ in range(7)]
+        orders = [self.get_order(order_type='limit', orderbooks=orderbooks, balances=balances) for _ in range(5)]
         trader.place_orders(*orders)
 
         self.logger.info('Жду информации об ордерах...')
