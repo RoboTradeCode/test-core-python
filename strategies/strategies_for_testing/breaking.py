@@ -22,6 +22,10 @@ class BreakingTesting(Strategy):
     5. Отправляю 10 ордеров в одной команде, из которых часть нормальных, часть кривых, жду от гейта
     чтобы на кривые пришла ошибка в течение 5 секунд.
     6. Создаю команду с 10 ордерами, один из них кривой, должно прийти 9 статусов open и 1 ошибка в течение 5 секунд.
+    7. Отменяю ордера, созданные на предыдущем шаге, кроме одного ордера.
+    8. Отменяю ордер, оставленный на предыдущем шаге, и посылаю в команде отмены один "лишний" ордер с несуществующим
+    client_order_id, в ответ ожидаю получить сообщение об ошибке по лишнему ордеру, и сообщение об успешной отмене
+    первого ордера.
 
     Причины, по которым тестирование может быть провалено:
     - некорректная работа гейта;
@@ -111,7 +115,7 @@ class BreakingTesting(Strategy):
             self.logger.info(f'Order {i}')
             if i % 2 == 0:
                 # создаю ордер с очень большим amount
-                order = self.get_order(order_type='limit', amount=10**7)
+                order = self.get_order(order_type='limit', amount=10 ** 7)
                 order.place()
                 if not await self.wait_for_order_state(order, enums.OrderState.ERROR, 5):
                     self.logger.critical(
@@ -132,7 +136,7 @@ class BreakingTesting(Strategy):
                          'и 1 ошибка в течение 5 секунд.')
         partially_invalid_orders = [self.get_order('limit') for _ in range(9)]
         # создаю ордер с очень большим amount
-        partially_invalid_orders.append(self.get_order('limit', amount=10**7))
+        partially_invalid_orders.append(self.get_order('limit', amount=10 ** 7))
         trader.place_orders(*partially_invalid_orders)
         await asyncio.sleep(5)
 
@@ -145,8 +149,40 @@ class BreakingTesting(Strategy):
             self.logger.critical(
                 f'TEST FAILED. Ордер не вернулся с ошибкой {empty_id_order} в течение 5 секунд')
 
-        trader.cancel_all_orders()
+        self.logger('7. Отменяю ордера, созданные на предыдущем шаге, кроме одного ордера.')
+        trader.cancel_orders(*partially_invalid_orders[:8])
         await asyncio.sleep(1)
+        self.logger.info('8. Отменяю ордер, оставленный на предыдущем шаге, и посылаю в команде отмены один "лишний" '
+                         'ордер с несуществующим client_order_id, в ответ в течение 3 секунд ожидаю получить сообщение '
+                         'об ошибке по лишнему ордеру, и сообщение об успешной отмене первого ордера.')
+        # создаю ордер, который не размещен на бирже
+        unplaced_order = self.get_order('limit')
+        trader.cancel_orders(partially_invalid_orders[8], unplaced_order)
+        await asyncio.sleep(3)
+        if trader.last_error is None or \
+                trader.last_error.action != enums.Action.CANCEL_ORDERS or \
+                trader.last_error.data[0].client_order_id != unplaced_order.core_order_id:
+            self.logger.info(f'TEST FAILED. Последнее полученное сообщение об ошибке не содержит информацию о '
+                             f'несуществующем ордере {unplaced_order}, который ядро пыталось отменить. Также тест мог '
+                             f'быть провален, если ядро получило другое сообщение об ошибке сразу после ошибки '
+                             f'cancel_orders. Последнее сообщение об ошибке: {trader.last_error}')
+            return
+
+        if partially_invalid_orders[8].state != enums.OrderState.CANCELED:
+            self.logger.info(f'TEST FAILED. Ордер {partially_invalid_orders[8]} не был отменен.')
+            return
+
+        self.logger.info('9. Пробую получить информацию по несуществующему ордеру, ожидаю получить в ответ в течение '
+                         '3 секунд сообщение об ошибке.')
+        trader.request_update_orders(unplaced_order)
+        await asyncio.sleep(3)
+        if trader.last_error is None or \
+                trader.last_error.action != enums.Action.GET_ORDERS or \
+                trader.last_error.data[0].client_order_id != unplaced_order.core_order_id:
+            self.logger.info(f'TEST FAILED. Последнее полученное сообщение об ошибке не содержит информацию о '
+                             f'несуществующем ордере {unplaced_order}, по которому ядро пыталось получить информацию. '
+                             f'Также тест мог быть провален, если ядро получило другое сообщение об ошибке сразу после '
+                             f'ошибки cancel_orders. Последнее сообщение об ошибке: {trader.last_error}')
 
         self.logger.info('SUCCESS. Тест успешно пройден.')
         return

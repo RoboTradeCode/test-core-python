@@ -35,6 +35,8 @@ class Trader(object):
     _order_error_callback: Callable[[OrderData], None]
     _order_closed_callback: Callable[[OrderData], None]
 
+    last_error: Message | None = None
+
     def __init__(self,
                  config: Configuration,
                  order_error_callback: Callable[[OrderData], None] = None,
@@ -260,6 +262,7 @@ class Trader(object):
         """
         match message.event:
             case enums.Event.ERROR:
+                self.last_error = message
                 if message.action == enums.Action.CREATE_ORDERS:
                     logger.info(f'Received error about order creating: {message}')
                     self._update_orders(orders=message.data, is_error=True)
