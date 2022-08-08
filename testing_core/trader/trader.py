@@ -272,8 +272,10 @@ class Trader(object):
             case enums.Event.DATA:
                 if isinstance(message.data, list) and message.data:
                     match message.action:
-                        case enums.Action.CREATE_ORDERS:
+                        case enums.Action.CREATE_ORDERS | enums.Action.GET_ORDERS:
                             logger.debug(f'Received {message.action.value} response: {message.data}')
+                            self._update_orders(orders=message.data)
+                        case enums.Action.ORDERS_UPDATE:
                             self._update_orders(orders=message.data)
                         case enums.Action.CANCEL_ALL_ORDERS | enums.Action.CANCEL_ORDERS:
                             logger.debug(f'Received {message.action.value} response: {message.data}')
