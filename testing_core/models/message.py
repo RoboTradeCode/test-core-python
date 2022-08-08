@@ -84,6 +84,6 @@ class Message(BaseModel):
     algo: str
     timestamp: int
     data: Union[
-        list[GateOrderToCreate], list[GateOrderInfo], list[OrderId], Orderbook,
+        list[GateOrderToCreate], list[GateOrderInfo], list[OrderId],  list[GateOrderId], Orderbook,
         GateOrderToCreate, Balances, list[str], int, str, None
     ]
