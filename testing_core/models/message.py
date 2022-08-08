@@ -1,4 +1,4 @@
-from typing import Union, Optional
+from typing import Union, Optional, Any
 
 from pydantic import BaseModel, PositiveFloat, NonNegativeFloat
 
@@ -60,7 +60,7 @@ class GateOrderInfo(BaseModel):
     status: enums.GateOrderStatus | None
     filled: NonNegativeFloat | None
     # info is not formatted message of order from exchange
-    info: dict | None
+    info: Any | None
 
 
 class Balances(BaseModel):
