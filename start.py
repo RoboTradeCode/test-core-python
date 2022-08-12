@@ -5,6 +5,7 @@ import asyncio
 
 import click
 
+from strategies.strategies_for_testing.balances import BalancesTesting
 from strategies.strategies_for_testing.breaking import BreakingTesting
 from strategies.strategies_for_testing.fast_test import FastTesting
 from strategies.strategies_for_testing.order_creating import OrderCreatingTesting
@@ -117,15 +118,16 @@ def order_creating_testing():
 @cli.command(['orderbook-testing'])
 def orderbook_testing():
     """
-    Стратегия для тестирования ордербуков.
+    Стратегия для тестирования корректного получения ордербуков.
     В данной стратегии надо проверить работу гейта в следующем:
 
-    1. что данные вообще приходят, что они меняются;
+    1. Проверяю, что ордербуки приходят и меняются. Ордербук должен измениться за 5 секунд.
 
-    2. нету больших задержек в передаче данных;
+    2. Проверяю на задержки в передаче данных. Должно прийти не менее 5 ордербуков за 2.5 секунды
 
-    3. в структуре стакана есть timestamp, это время события на бирже, и гейт должен присывать последовательные
-    ордербуки, т.е. если пришел ордербук с запоздавшими данными это критическа ошибка. Время должно рости;
+    3. Проверяю, что гейт присылает ордербуки с последовательным timestamp.
+
+    Если биржа не присылает timestamp, этот шаг будет пропущен.
     """
     asyncio.run(run_core(strategy_type=OrderbookTesting))
 
@@ -152,6 +154,21 @@ def breaking_testing():
     asyncio.run(run_core(strategy_type=BreakingTesting))
 
 
+@cli.command(['balances-testing'])
+def balances_testing():
+    """
+    Стратегия тестирования обновлений баланса
+
+    1. Отменяю все ордера и запрашиваю баланс.
+
+    2. Случайным образом выбираю рынок, выставляю по нему ордер, повторяю 5 раз. При выставлении баланс
+    должен изменяться и приходить в течении 0.5 секунды
+
+    3. Отменяю ордера, созданные на шаге 2. Баланс должен изменяться и приходить в течении 0.5 секунды.
+    """
+    asyncio.run(run_core(strategy_type=BalancesTesting))
+
+
 async def run_all():
     """
     Асинхронная функция для запуска стратегий.
@@ -160,6 +177,7 @@ async def run_all():
     await run_core(strategy_type=OrderbookTesting)
     await run_core(strategy_type=OrderCreatingTesting)
     await run_core(strategy_type=CancellingTesting)
+    await run_core(strategy_type=BalancesTesting)
     await run_core(strategy_type=BreakingTesting)
 
 
@@ -172,6 +190,7 @@ def full_testing():
     orderbook-testing
     order-creating-testing
     cancelling-testing
+    balances-testing
     breaking-testing
     """
     asyncio.run(run_all())

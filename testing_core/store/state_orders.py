@@ -1,6 +1,7 @@
 import logging
 
 from testing_core import enums
+from testing_core.models.message import OrderId
 from testing_core.order.order import Order, OrderData, OrderUpdatable
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,7 @@ class OrdersState(object):
             else:
                 logger.warning(f'Unknown order with id: {order_data.core_order_id}')
 
-    def set_orders_state(self, *orders: OrderData, state: enums.OrderState) -> None:
+    def set_orders_state(self, *orders: OrderData | OrderId, state: enums.OrderState) -> None:
         """
         Установить новое состояние для одного или нескольких ордеров:
         :param orders: ордера, которым нужно обновить состояние:

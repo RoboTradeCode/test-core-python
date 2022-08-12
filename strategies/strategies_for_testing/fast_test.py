@@ -54,7 +54,7 @@ class FastTesting(Strategy):
         while limit_order.state == enums.OrderState.PLACING:
             await asyncio.sleep(0.1)
 
-        self.logger.info(f'Лимитные ордер: {limit_order}')
+        self.logger.info(f'Лимитный ордер: {limit_order}')
 
         self.logger.info('4. Запрос статуса лимитного ордера')
         trader.request_update_orders(limit_order)

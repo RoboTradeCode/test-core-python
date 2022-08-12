@@ -88,6 +88,6 @@ class OrderbookTesting(Strategy):
                         return
                     last_update_timestamp = copy.deepcopy(orderbooks[symbol].timestamp)
         else:
-            self.logger.warning('Шаг пропущен, ордербуки не имеют символов. '
+            self.logger.warning('Шаг пропущен, ордербуки не имеют timestamp. '
                                 'Это может быть особенностью биржи, либо ошибкой гейта')
         self.logger.info('SUCCESS. Тест успешно пройден.')

@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Optional, Any
 
 from pydantic import BaseModel, PositiveFloat, NonNegativeFloat
 
@@ -15,6 +15,18 @@ class GateOrderId(BaseModel):
 
     client_order_id: str
     symbol: str
+    id: Optional[str]
+
+
+class OrderId(BaseModel):
+    """Информация для идентификации ордера, которую присылает ядро"""
+
+    class Config:
+        extra = 'forbid'
+
+    core_order_id: str
+    symbol: str
+    id: Optional[str]
 
 
 class GateOrderToCreate(BaseModel):
@@ -48,7 +60,7 @@ class GateOrderInfo(BaseModel):
     status: enums.GateOrderStatus | None
     filled: NonNegativeFloat | None
     # info is not formatted message of order from exchange
-    info: dict | None
+    info: Any | None
 
 
 class Balances(BaseModel):
@@ -72,6 +84,6 @@ class Message(BaseModel):
     algo: str
     timestamp: int
     data: Union[
-        list[GateOrderToCreate], list[GateOrderInfo], list[GateOrderId], Orderbook,
+        list[GateOrderToCreate], list[GateOrderInfo], list[OrderId],  list[GateOrderId], Orderbook,
         GateOrderToCreate, Balances, list[str], int, str, None
     ]
