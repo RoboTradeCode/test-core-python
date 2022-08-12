@@ -5,6 +5,7 @@ import asyncio
 
 import click
 
+from strategies.strategies_for_testing.balances import BalancesTesting
 from strategies.strategies_for_testing.breaking import BreakingTesting
 from strategies.strategies_for_testing.fast_test import FastTesting
 from strategies.strategies_for_testing.order_creating import OrderCreatingTesting
@@ -153,6 +154,21 @@ def breaking_testing():
     asyncio.run(run_core(strategy_type=BreakingTesting))
 
 
+@cli.command(['balances-testing'])
+def balances_testing():
+    """
+    Стратегия тестирования обновлений баланса
+
+    1. Отменяю все ордера и запрашиваю баланс.
+
+    2. Случайным образом выбираю рынок, выставляю по нему ордер, повторяю 5 раз. При выставлении баланс
+    должен изменяться и приходить в течении 0.5 секунды
+
+    3. Отменяю ордера, созданные на шаге 2. Баланс должен изменяться и приходить в течении 0.5 секунды.
+    """
+    asyncio.run(run_core(strategy_type=BalancesTesting))
+
+
 async def run_all():
     """
     Асинхронная функция для запуска стратегий.
@@ -161,6 +177,7 @@ async def run_all():
     await run_core(strategy_type=OrderbookTesting)
     await run_core(strategy_type=OrderCreatingTesting)
     await run_core(strategy_type=CancellingTesting)
+    await run_core(strategy_type=BalancesTesting)
     await run_core(strategy_type=BreakingTesting)
 
 
@@ -173,6 +190,7 @@ def full_testing():
     orderbook-testing
     order-creating-testing
     cancelling-testing
+    balances-testing
     breaking-testing
     """
     asyncio.run(run_all())
